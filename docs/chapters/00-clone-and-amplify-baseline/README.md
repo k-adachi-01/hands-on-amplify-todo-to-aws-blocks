@@ -14,7 +14,7 @@
 | 上流テンプレート commit | `a7f2a70036f8d5007fcd510317e38d4540a5bc2f` |
 | 実行日 | 2026-06-23 |
 | Nix Node | v22.22.3 / npm 10.9.8 |
-| AWS Profile | `aws-poc-sandbox`（`.env.local`） |
+| AWS Profile | 著者環境: `aws-poc-sandbox`（読者は `aws login` で可） |
 | AWS Account | `155936382172` |
 | Sandbox Region | `ap-northeast-1` |
 | Sandbox Identifier | `adachi` |
@@ -39,19 +39,21 @@ Amplify 単体時代の Todo 定義・フロント呼び出し。
 | [`snapshots/resource.ts`](snapshots/resource.ts) | `publicApiKey()` の Todo モデル |
 | [`snapshots/App.tsx`](snapshots/App.tsx) | `client.models.Todo.*` |
 
-## 手順 0-3: AWS SSO + `.env.local`
+## 手順 0-3: AWS ログイン（`aws login`）
+
+ハンズオン読者向けの手順は [記事 `docs/ARTICLE-DRAFT.md`](../../ARTICLE-DRAFT.md) の「AWS へのログイン」を参照。
 
 ```bash
-aws sso login --profile aws-poc-sandbox
-AWS_PROFILE=aws-poc-sandbox aws sts get-caller-identity
-
-cp .env.local.example .env.local
-exit && nix develop   # Loaded .env.local (AWS_PROFILE=aws-poc-sandbox)
+aws --version    # 2.32.0 以上
+aws login
+aws sts get-caller-identity
 ```
 
-**トラブル:** `flake.nix` の `${AWS_PROFILE:-unset}` は Nix 式と解釈される → `''${AWS_PROFILE:-unset}` にエスケープ済み。
+名前付きプロファイルを使う場合のみ `.env.local` に `AWS_PROFILE` を設定（[`../../.env.local.example`](../../.env.local.example)）。
 
-失敗ログ（プロファイル未指定）: [`commands/02-ampx-sandbox-attempt.log`](commands/02-ampx-sandbox-attempt.log)
+**著者の実行記録（環境固有・参考）:** Profile `aws-poc-sandbox`、Region `ap-northeast-1`。読者は `aws login` のみで可。
+
+失敗ログ（認証未設定）: [`commands/02-ampx-sandbox-attempt.log`](commands/02-ampx-sandbox-attempt.log)
 
 ## 手順 0-4: ターミナル A — Sandbox（完了）
 

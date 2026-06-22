@@ -6,7 +6,7 @@
 
 | 項目 | 値（2026-06-23 実行例） |
 | --- | --- |
-| Profile | `aws-poc-sandbox` |
+| Profile | 著者の実行例のみ（読者は `aws login` で可） |
 | Region | `ap-northeast-1` |
 | Identifier | `adachi` |
 | Stack | `amplify-amplifyvitereacttemplate-adachi-sandbox-a14ca47146` |
@@ -14,13 +14,15 @@
 ## 起動・再開
 
 ```bash
-aws sso login --profile aws-poc-sandbox
+aws login
+aws sts get-caller-identity   # 通ることを確認してから
+
 nix develop
-npm run sandbox    # ターミナル A — watch モード
+npm run sandbox    # ターミナル A
 npm run dev        # ターミナル B
 ```
 
-SSO トークン切れ・マシン sleep 後は両方再起動が必要です。Sandbox 再デプロイは初回より短いことが多いです。
+セッション切れ時は `aws login` からやり直してください。
 
 ## 片付け（任意）
 

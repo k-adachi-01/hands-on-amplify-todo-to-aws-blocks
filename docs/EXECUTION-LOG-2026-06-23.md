@@ -5,7 +5,7 @@
 | 項目 | 値 |
 | --- | --- |
 | 日時 | 2026-06-23 02:00–02:16 JST 頃 |
-| AWS Profile | aws-poc-sandbox |
+| AWS 認証 | 著者: SSO プロファイル（読者手順は `aws login`） |
 | Region | ap-northeast-1 |
 | Nix Node | v22.22.3 |
 | GitHub | https://github.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks |
@@ -13,7 +13,8 @@
 ## コマンド履歴（要約）
 
 ```bash
-aws sso login --profile aws-poc-sandbox
+# 著者環境での実行例（読者は aws login を使用）
+aws login
 cp .env.local.example .env.local
 nix develop                    # Loaded .env.local
 

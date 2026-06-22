@@ -12,54 +12,34 @@ published: false
 
 | 項目 | 内容 |
 | --- | --- |
-| **読者** | Amplify Gen 2 の Todo クイックスタートを触ったことがあるフロントエンド寄りの開発者 |
-| **作るもの** | ログイン付き Todo アプリ（公式テンプレートを in-place で AWS Blocks 化） |
-| **所要時間** | 本編 90〜120 分 / 発展編含め 150〜180 分 |
-| **AWS アカウント** | Phase 0 から必要 |
-| **環境** | Nix dev shell 内の Node.js v22 + npm |
+| **読者** | Amplify Gen 2 Todo クイックスタート経験者 |
+| **所要時間** | 本編 90〜120 分 |
+| **AWS** | Phase 0 から `aws login` + Amplify Sandbox |
 
-## はじめに
+## AWS Blocks とは（2026年6月プレビュー）
 
-[amplify-vite-react-template](https://github.com/aws-samples/amplify-vite-react-template) は少ないコードで Todo を動かせますが、quickstart の Todo は `publicApiKey()` で誰でも読み書きでき、バックエンドの処理順も見えにくいです。
+[AWS Blocks](https://docs.aws.amazon.com/blocks/latest/devguide/) は、Block（認証・DB・Realtime 等）を npm パッケージで組み合わせ、**同じ TypeScript をローカルと AWS で動かす**バックエンドツールキットです。まだ触った人は少ない前提で、本記事では Amplify 公式 Todo から in-place で載せ替えます。
 
-本ハンズオンでは同じ Todo を **AWS Blocks** へ in-place で書き換えます。
+## なぜ Amplify と比べるか
 
-- **Amplify:** モデル宣言 → `client.models.Todo.*`
-- **Blocks:** `aws-blocks/index.ts` に API を書き → `api.createTodo()`
+読者の多くが Amplify quickstart から入るため、**同じ Todo** で「モデル CRUD」と「API 関数」の違いを対比します。Amplify の `publicApiKey()` Todo は誰でも読み書きできる — Blocks では `requireAuth` と `userId` 分離をコードで書きます。
+
+## 準備
 
 ```bash
 git clone git@github.com:k-adachi-01/hands-on-amplify-todo-to-aws-blocks.git
 cd hands-on-amplify-todo-to-aws-blocks
 nix develop && npm install
+
+aws login
+aws sts get-caller-identity
 ```
 
-## 完成イメージ
+認証は [aws login](https://aws.amazon.com/jp/blogs/news/simplified-developer-access-to-aws-with-aws-login/)（CLI 2.32.0+）を使用。長期アクセスキーは不要です。
 
-### サインイン後の Todo UI
-
-![Authenticator](https://raw.githubusercontent.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks/main/docs/chapters/03-chapter2-cognito-auth/screenshots/01-authenticator-signin.png)
-
-![user-a](https://raw.githubusercontent.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks/main/docs/chapters/03-chapter2-cognito-auth/screenshots/02-user-a-todos.png)
-
-![user-b](https://raw.githubusercontent.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks/main/docs/chapters/03-chapter2-cognito-auth/screenshots/03-user-b-todos.png)
-
-## アーキテクチャ（ハイブリッド dev）
-
-| コンポーネント | 実行場所 |
-| --- | --- |
-| Cognito / Authenticator | Sandbox User Pool |
-| Blocks RPC（ブラウザ） | Sandbox Lambda |
-| Vite UI | localhost:3000 |
-
-ブラウザからの Todo 操作は **AWS 上の Lambda** に届きます。
-
-## Phase 0: Sandbox
+## Phase 0
 
 ```bash
-aws sso login --profile aws-poc-sandbox
-cp .env.local.example .env.local
-nix develop
-
 # ターミナル A
 npm run sandbox
 
@@ -67,40 +47,12 @@ npm run sandbox
 npm run dev
 ```
 
-## Phase 1: Blocks 統合
+## 完成イメージ
 
-```bash
-npx @aws-blocks/create-blocks-app@latest . --yes
-```
+![Authenticator](https://raw.githubusercontent.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks/main/docs/chapters/03-chapter2-cognito-auth/screenshots/01-authenticator-signin.png)
 
-## 第1章: 最小 CRUD
-
-`DistributedTable` + `api.createTodo` / `api.listTodos`。詳細はリポジトリの `docs/chapters/02-chapter1-minimal-crud/`。
-
-## 第2章: Cognito + ユーザー分離
-
-- `CognitoVerifier` — JWT 検証（ログイン UI ではない）
-- `auth.requireAuth(context)` — API 内で認可
-- `userId: user.sub` — partition key で分離
-
-```bash
-bash scripts/ensure-chapter2-users.sh
-npm run verify:chapter2
-```
-
-## 発展編: 第3章
-
-toggle / delete / sort / Realtime。`npm run verify:chapter3`。
-
-## トラブルシュート（要約）
-
-- **InvalidCredentialError** → `.env.local` の `AWS_PROFILE`
-- **sso login 後も失敗** → `AWS_PROFILE=... aws sts get-caller-identity`
-- **CLI Cognito 認証失敗** → `USER_PASSWORD_AUTH` 非許可、verify スクリプトは SRP を使用
-- **client.js** — 自動生成、編集しない
+![user-a](https://raw.githubusercontent.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks/main/docs/chapters/03-chapter2-cognito-auth/screenshots/02-user-a-todos.png)
 
 ## まとめ
 
-認可の置き場所（モデルルール vs API 内）、データ境界（`publicApiKey` vs `user.sub`）、抽象化の単位（モデル vs ドメイン API）の三つが、このハンズオンの学びです。
-
-全文・ログ・diff: https://github.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks/tree/main/docs
+認可の置き場所・データ境界・抽象化の単位（モデル vs API）— 全文はリポジトリの [ARTICLE-DRAFT.md](https://github.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks/blob/main/docs/ARTICLE-DRAFT.md)
