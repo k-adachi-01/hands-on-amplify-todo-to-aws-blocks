@@ -8,6 +8,7 @@
 | AWS Profile | aws-poc-sandbox |
 | Region | ap-northeast-1 |
 | Nix Node | v22.22.3 |
+| GitHub | https://github.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks |
 
 ## コマンド履歴（要約）
 
@@ -31,39 +32,36 @@ npm run dev                    # http://localhost:3000
 | dev server ログ | chapters/00-.../commands/04-dev-server.log |
 | outputs マスク例 | chapters/00-.../snapshots/amplify_outputs.masked.example.json |
 | Authenticator スクショ | chapters/03-.../screenshots/01-authenticator-signin.png |
+| user A/B UI スクショ | chapters/03-.../screenshots/02-user-a-todos.png, 03-user-b-todos.png |
 | client（Sandbox URL） | chapters/03-.../snapshots/client.sandbox.js |
+| 第3章 API 検証ログ | chapters/04-.../commands/01-verify-chapter3.log |
 
-## セッション 2 — 資料整備 + 第2章検証準備（02:16 以降）
+## セッション 2 — 資料整備 + 第2章検証（02:16–02:22 JST）
 
-### 実施内容
+- `scripts/run-sandbox.sh` / `run-sandbox-delete.sh`
+- `npm run verify:chapter2` → OK（Amplify SRP signIn）
+- トラブル: CLI `USER_PASSWORD_AUTH` 非許可
 
-1. Phase 0 README に Sandbox 成功記録・ハイブリッド構成メモを反映
-2. `scripts/run-sandbox.sh` / `run-sandbox-delete.sh` — `.env.local` の `AWS_PROFILE` を `ampx --profile` に渡す
-3. `scripts/verify-chapter2-auth.sh` + `npm run verify:chapter2` を追加
-4. マスク outputs を `amplify_outputs.masked.example.json` に改名（gitignore 回避）
-5. Authenticator スクショを Phase 0 にもコピー（`02-post-sandbox-authenticator.png`）
-
-### セッション 2 — 第2章 API 分離検証（02:22 JST）
+## セッション 3 — UI スクショ（02:30 頃）
 
 ```bash
-bash scripts/ensure-chapter2-users.sh   # user-a / user-b @ example.com
-npm run verify:chapter2 | tee docs/chapters/03-chapter2-cognito-auth/commands/02-verify-chapter2-auth.log
-# → OK — userId partition isolation verified
+npx tsx scripts/capture-chapter2-screenshots.ts
+# → 02-user-a-todos.png, 03-user-b-todos.png
 ```
 
-| ユーザー | email | Sandbox Blocks API |
-| --- | --- | --- |
-| A | user-a@example.com | `A のタスク` のみ list |
-| B | user-b@example.com | `B のタスク` のみ list |
+commit: `c8cbb14`
 
-**トラブル:** CLI の `initiate-auth` / `USER_PASSWORD_AUTH` は Amplify App Client で無効 → `verify-chapter2-auth.ts` が Amplify SRP `signIn` を使用。
+## セッション 4 — GitHub 公開 + 第3章検証（夜間自律）
 
-### 残作業（任意）
-
-- ブラウザで Sign In → Todo UI スクショ（`02-user-a-todos.png`, `03-user-b-todos.png`）
-- GitHub 公開
+```bash
+gh repo create hands-on-amplify-todo-to-aws-blocks --public --source=. --push
+git push origin --tags
+npm run verify:chapter3 | tee docs/chapters/04-chapter3-advanced/commands/01-verify-chapter3.log
+# → OK — toggle, sort, delete verified
+```
 
 ## 関連
 
 - 記事初稿: [`ARTICLE-DRAFT.md`](ARTICLE-DRAFT.md)
-- 第2章 README: [`chapters/03-chapter2-cognito-auth/README.md`](chapters/03-chapter2-cognito-auth/README.md)
+- 第2章: [`chapters/03-chapter2-cognito-auth/README.md`](chapters/03-chapter2-cognito-auth/README.md)
+- 第3章: [`chapters/04-chapter3-advanced/README.md`](chapters/04-chapter3-advanced/README.md)

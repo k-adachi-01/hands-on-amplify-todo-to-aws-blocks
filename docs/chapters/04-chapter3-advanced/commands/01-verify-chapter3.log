@@ -1,0 +1,21 @@
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> amplify-vite-react-template@0.0.0 verify:chapter3
+> bash scripts/verify-chapter3-advanced.sh
+
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+Blocks API: https://mkg0bxtrk7.execute-api.ap-northeast-1.amazonaws.com/prod/aws-blocks/api
+
+=== create (priority 1 and 3) ===
+todoId: mqpiba7l-gver3j
+
+=== listTodos sortBy=priority ===
+ch3-low-mqpiayea, ch3-low-mqpib9ni, A のタスク, ch3-high-mqpib9ni
+
+=== toggleTodo ===
+completed: true
+
+=== deleteTodo ===
+remaining count: 3
+
+OK — toggle, sort, delete verified
