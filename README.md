@@ -10,6 +10,8 @@
 
 **公開 URL:** https://github.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks
 
+> **重要:** clone 直後の `main` は完成形です。ハンズオンは [`docs/ARTICLE-DRAFT.md`](docs/ARTICLE-DRAFT.md) のとおり **章ごとに `git checkout <tag>`** してから編集してください。
+
 ## 前提
 
 - [Nix](https://nixos.org/download/)（推奨）— 無い場合は Node.js 22+ / npm 10+

@@ -11,60 +11,96 @@
 | **作るもの** | ログイン付き Todo アプリ（公式テンプレートを in-place で AWS Blocks 化） |
 | **所要時間** | 本編（第1〜2章）90〜120 分 / 発展編（第3章）含め 150〜180 分 |
 | **AWS アカウント** | Phase 0 から必要（Amplify Sandbox で Cognito 等を provision） |
-| **環境** | [Nix](https://nixos.org/download/) dev shell 内の Node.js v22 + npm（推奨） |
+| **環境** | [Nix](https://nixos.org/download/) dev shell 推奨（Node.js **20.20+** / npm **10.8+**。Nix 利用時は v22 に固定） |
 
 ### 始める前のチェックリスト
 
-次をすべて満たしてから Phase 0 に進んでください。
-
-- [ ] **Node.js 22+** と **npm 10+**（Nix を使う場合は `nix develop` 後に `node -v` で確認）
-- [ ] **AWS CLI 2.32.0 以降**（`aws --version` で確認）
-- [ ] **AWS アカウント**（ルートまたは IAM ユーザーでコンソールにログインできること）
-- [ ] **2 つのターミナル**を開けること（Sandbox 用と dev server 用）
+- [ ] **Node.js 20.20+** と **npm 10.8+**（`nix develop` 後に `node -v` / `npm -v` で確認）
+- [ ] **AWS CLI 2.32.0 以降**（`aws --version`）
+- [ ] **AWS アカウント**（コンソールにログインできること）
+- [ ] **2 つのターミナル**（Sandbox 用と dev server 用）
 - [ ] ブラウザで **http://localhost:3000** にアクセスできること
 
-Nix を使う理由: Node バージョンと npm キャッシュをリポジトリ内に閉じ、読者間の差を減らすため。Nix が無い場合は Node.js 22+ と npm 10+ を手動で用意してください（[AWS Blocks の前提](https://docs.aws.amazon.com/blocks/latest/devguide/getting-started.html) と同様）。
+### プレビュー版の前提（ここで止まる場合があります）
+
+本ハンズオンは **2026年6月17日プレビュー公開の AWS Blocks** に依存します。再現性のため、次を事前に確認してください。
+
+| 依存 | 入手方法 | 入らない場合 |
+| --- | --- | --- |
+| `@aws-blocks/blocks` 等 | 公開 npm（`npm install`） | `npm install` が失敗 → **ここで止まる**。[Developer Guide](https://docs.aws.amazon.com/blocks/latest/devguide/getting-started.html) と npm のエラーを確認 |
+| `npx @aws-blocks/create-blocks-app` | 同上（Phase 1 は**本リポジトリでは実行しない**） | ゼロから作る場合のみ必要 |
+| `aws login` | AWS CLI 2.32.0+（[公式ブログ](https://aws.amazon.com/jp/blogs/news/simplified-developer-access-to-aws-with-aws-login/)） | 2.32 未満なら [CLI を更新](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)。`aws login` が使えない組織では、**`aws sts get-caller-identity` が通る従来の認証**（アクセスキー・SSO 等）でも可 |
+
+プレビュー中は API やパッケージ名が変わる可能性があります。
+
+---
+
+## ハンズオンの進め方（git tag 必読）
+
+**clone 直後の `main` ブランチは第3章まで完了したコードです。** 第1章「ログイン不要で Todo 追加」は **HEAD では再現しません**（`requireAuth` 入りの完成形になっているため）。
+
+各章の冒頭で **必ず tag に checkout** してから編集してください。
+
+```
+phase-0-amplify-baseline     … Amplify のみ（Before）
+phase-1-blocks-scaffold      … create-blocks-app 直後（第1章の起点）
+chapter-1-minimal-crud       … 認証なし CRUD 完了
+chapter-2-cognito-auth       … Cognito + ユーザー分離完了
+chapter-3-advanced           … Realtime 等（発展編）
+```
+
+| 章 | 開始時に実行 | 編集後の確認用 tag |
+| --- | --- | --- |
+| 第1章 | `git checkout phase-1-blocks-scaffold` | `git diff chapter-1-minimal-crud` |
+| 第2章 | `git checkout chapter-1-minimal-crud` | `git diff chapter-2-cognito-auth` |
+| 第3章 | `git checkout chapter-2-cognito-auth` | `git diff chapter-3-advanced` |
+
+完成形と見比べる: `git diff <tag>` または [`docs/chapters/`](chapters/) の `snapshots/` を参照。
 
 ---
 
 ## AWS Blocks とは
 
-**AWS Blocks**（2026年6月17日プレビュー公開）は、AWS 上でフルスタックアプリのバックエンドを組み立てるためのツールキットです。まだ触った人は少ない前提で、この節だけ読めば用語が揃います。
+**AWS Blocks** は、Block（認証・DB・Realtime 等）を npm パッケージで組み合わせ、**同じ TypeScript をローカルと AWS で動かす**バックエンドツールキットです（[Developer Guide](https://docs.aws.amazon.com/blocks/latest/devguide/)）。
 
-[公式ドキュメント](https://docs.aws.amazon.com/blocks/latest/devguide/) の説明を要約すると:
-
-- **Block** — 認証・データ保存・リアルタイムなど、1 機能分のパッケージ（npm）。アプリコード・ローカル開発環境・AWS リソース定義がセットになっている
-- **ローカルで動く** — AWS アカウントなしでも `npm run dev` でバックエンドの mock が動く（本ハンズオン Phase 0 以降は Cognito 連携のため Sandbox も使う）
-- **同じコードでデプロイ** — ローカルと本番で `aws-blocks/index.ts` を書き換えずに済む設計
-
-本ハンズオンで使う Block の例:
-
-| Block | 役割 |
+| 用語 | 意味 |
 | --- | --- |
-| `DistributedTable` | Todo の永続化（ローカル mock / 本番 DynamoDB） |
-| `ApiNamespace` | `createTodo` などの API 関数を定義 |
-| `Realtime` | Todo 変更の push 通知（第3章） |
-| `CognitoVerifier` | フロントが送る JWT を API 内で検証（第2章） |
+| **Block** | 1 機能分のパッケージ（例: `DistributedTable`, `ApiNamespace`） |
+| **`aws-blocks/index.ts`** | バックエンドの本体。API 関数をここに書く |
+| **ローカル mock** | `npm run dev` 時、AWS なしで `.bb-data/` 等に保存できるモード |
+| **Sandbox / デプロイ** | 同じコードが Lambda + DynamoDB 等で動く |
 
-AWS Blocks は **プレビュー**です。API やパッケージ名は変わる可能性があります。最新は [AWS Blocks Developer Guide](https://docs.aws.amazon.com/blocks/latest/devguide/) を参照してください。
+本ハンズオンで使う Block: `DistributedTable`, `ApiNamespace`, `CognitoVerifier`（第2章）, `Realtime`（第3章）。
 
 ---
 
 ## なぜ Amplify と比べるのか
 
-多くの読者が最初に触るのは [Amplify Gen 2 の Todo クイックスタート](https://github.com/aws-samples/amplify-vite-react-template) です。だから **同じ Todo アプリ** を題材にします。
+読者の多くが [Amplify Todo クイックスタート](https://github.com/aws-samples/amplify-vite-react-template) から入るため、**同じ Todo** で対比します。
 
 | 観点 | Amplify Gen 2 | AWS Blocks |
 | --- | --- | --- |
-| 入口 | 触った人が多い | 2026年6月プレビューで、まだ少数 |
-| バックエンドの書き方 | `defineData` でモデル宣言 → CRUD 自動生成 | `aws-blocks/index.ts` に API 関数を書く |
-| 処理の見え方 | 認証→保存の順序がフレームワーク内に隠れやすい | `requireAuth` → `put` などコードで追える |
-| quickstart の認可 | `publicApiKey()` — 誰でも読み書き可 | 第2章で `userId` 分離を明示的に実装 |
-| 既存アプリとの関係 | — | Amplify プロジェクトに **in-place で載せられる**（本ハンズオンの Phase 1） |
+| 書き方 | モデル宣言 → CRUD 自動生成 | `aws-blocks/index.ts` に API を書く |
+| 認可 | `allow.publicApiKey()` 等 | API 内の `requireAuth` + キー設計 |
+| 見え方 | 処理順がフレームワーク内に隠れやすい | `requireAuth` → `put` と追える |
 
-「Amplify を捨てる」記事ではありません。**Amplify で動かした UI と Sandbox を活かしつつ、データ層を Blocks の API に差し替える**流れです。
+Amplify を捨てる記事ではなく、**Amplify の Sandbox / UI を活かしつつデータ層を Blocks に差し替える** in-place 移行です。
 
-> Amplify 版は「少ないコードで使える」。Blocks 版は「バックエンドの中身が見える」。
+---
+
+## 章ごとの dev モード（最重要 — ここを読んでから Phase 0 へ）
+
+`npm run dev` だけでは「どこにデータが保存されるか」が決まりません。**章と設定の組み合わせ**で決まります。
+
+| 章 | Sandbox | ブラウザの Blocks RPC | Todo の保存先 |
+| --- | --- | --- | --- |
+| **第1章**（単体で学ぶ場合） | **不要** | ローカル `http://localhost:3000/aws-blocks/api` | リポジトリ内 **`.bb-data/`**（AWS 不要） |
+| **第1章**（本記事の Phase 0 後） | 起動済み | **`amplify_outputs.json` の Sandbox API** | **Sandbox の DynamoDB** |
+| **第2章以降**（本記事） | **必須** | Sandbox API + Cognito JWT | Sandbox の DynamoDB |
+
+本記事は **Phase 0 で Sandbox を立てたまま** 第1章に進みます。第1章のコードは認証なしですが、**`client.js` が Sandbox の API Gateway を向くため、データは AWS 上に保存されます**（ローカル `.bb-data/` ではありません）。
+
+第1章を **完全にオフライン** で試す場合: Sandbox を止め、`amplify_outputs.json` を一時的にリネームしてから `npm run dev` してください（上級者向け。本記事の推奨手順ではありません）。
 
 ---
 
@@ -73,358 +109,310 @@ AWS Blocks は **プレビュー**です。API やパッケージ名は変わる
 ```bash
 git clone git@github.com:k-adachi-01/hands-on-amplify-todo-to-aws-blocks.git
 cd hands-on-amplify-todo-to-aws-blocks
-nix develop          # 初回は flake のビルドに少し時間がかかります
-npm install          # 依存関係の取得（数分かかることがあります）
+nix develop          # 初回は数分かかることがあります
+npm install          # 数分かかることがあります。エラーなら「プレビュー版の前提」を参照
 ```
-
-**確認:**
 
 ```bash
-node -v    # v22.x 推奨
-npm -v     # 10.x 以上
+node -v    # v22.x（Nix）または 20.20+
+npm -v     # 10.8+
 ```
-
-`npm install` がエラーなく終われば次へ進めます。
 
 ---
 
-## AWS へのログイン（`aws login`）
+## AWS へのログイン
 
-Amplify Sandbox は AWS にリソースを作るため、**先に CLI から AWS にログイン**します。
+Amplify Sandbox は AWS にリソースを作るため、先に CLI 認証を通します。
 
-長期のアクセスキーを `.aws/credentials` に書く代わりに、AWS CLI 2.32.0 以降の **`aws login`** を使います。マネジメントコンソールと同じ方法でサインインし、**一時的な認証情報**が CLI に渡されます（[公式ブログ](https://aws.amazon.com/jp/blogs/news/simplified-developer-access-to-aws-with-aws-login/)）。
-
-### 手順
-
-1. AWS CLI のバージョンを確認する。
+### 推奨: `aws login`（CLI 2.32.0+）
 
 ```bash
 aws --version
-# aws-cli/2.32.0 以上であること
-```
+# 2.32.0 未満なら https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html で更新
 
-2. ログインする（ブラウザが開きます）。
-
-```bash
+aws configure set region ap-northeast-1   # 任意のリージョン。Sandbox はリージョン必須
 aws login
-```
-
-3. ブラウザの指示に従い、普段コンソールに入るのと同じ方法でサインインする。
-4. ターミナルに戻り、自分の AWS 身份が取れるか確認する。
-
-```bash
 aws sts get-caller-identity
 ```
 
-`Account` と `Arn` が JSON で返れば成功です。**このコマンドが通らない状態で Sandbox は動きません。**
+`Account` と `Arn` が JSON で返れば OK。**このコマンドが通らないと Sandbox は動きません。**
 
-### 複数アカウントを使う場合（任意）
+### 代替
 
-名前付きプロファイルでログインする場合:
+組織ポリシーで `aws login` が使えない場合、**従来どおり** アクセスキー・SSO・フェデレーション等で構いません。条件は **`aws sts get-caller-identity` が通ること** だけです。
 
-```bash
-aws login --profile my-sandbox
-aws sts get-caller-identity --profile my-sandbox
-```
+名前付きプロファイルを使う場合のみ `.env.local` に `AWS_PROFILE=...` を設定（[`.env.local.example`](../.env.local.example)）。
 
-そのときだけ、リポジトリ直下に `.env.local` を作り、プロファイル名を書きます（git には含めません）。
+### セッション切れ
 
-```bash
-cp .env.local.example .env.local
-# .env.local の AWS_PROFILE=my-sandbox のコメントを外す
-exit && nix develop   # shellHook が .env.local を読み込む
-```
-
-**デフォルトプロファイルで `aws login` しただけなら `.env.local` は不要**です。`npm run sandbox` は設定済みの認証情報をそのまま使います。
-
-### セッションが切れたとき
-
-`ampx sandbox` で `Unable to locate credentials` や `InvalidCredentialError` が出たら、もう一度:
-
-```bash
-aws login
-aws sts get-caller-identity   # 通ることを確認してから sandbox 再実行
-```
+`InvalidCredentialError` が出たら `aws login` → `aws sts get-caller-identity` → `npm run sandbox` を再実行。
 
 ---
 
 ## 完成イメージと概念マップ
 
-### Before（Amplify Data）
-
-Phase 0 のコード（tag `phase-0-amplify-baseline`）では次の形です。
+### Before（Amplify Data）— tag `phase-0-amplify-baseline`
 
 ```typescript
-// amplify/data/resource.ts — Todo は content のみ、publicApiKey()
 client.models.Todo.create({ content: '...' });
 client.models.Todo.observeQuery().subscribe(...);
 ```
 
-- **モデルを宣言すると CRUD が自動で生える** — 便利だが、裏で何が起きているか追いにくい
-- **`publicApiKey()`** — API Key を知っていれば誰でも Todo を読み書きできる（学習用 quickstart 向け。**本番では使わない**）
+- `publicApiKey()` — API Key を知っていれば誰でも読み書き可（学習用。**本番では使わない**）
 
-### After（Blocks + Cognito）
+### After（第2章完了）
 
-第2章完了時点:
+![Authenticator](chapters/03-chapter2-cognito-auth/screenshots/01-authenticator-signin.png)
 
-![Authenticator サインイン画面](chapters/03-chapter2-cognito-auth/screenshots/01-authenticator-signin.png)
+![user-a](chapters/03-chapter2-cognito-auth/screenshots/02-user-a-todos.png)
 
-![user-a の Todo 一覧](chapters/03-chapter2-cognito-auth/screenshots/02-user-a-todos.png)
+- `Authenticator`（UI）+ `CognitoVerifier`（API 内 JWT 検証）+ `userId: user.sub` で分離
 
-- `Authenticator` でログイン（**UI は Amplify UI コンポーネント**）
-- `api.createTodo()` の **中で** `auth.requireAuth(context)` が JWT を検証
-- `userId: user.sub` を partition key にし、ユーザーごとにデータ分離
-
-### アーキテクチャ（ハイブリッド dev）
-
-本ハンズオンの `npm run dev` は次の構成です。**初心者が一番混乱しやすい点**なので、表を読んでから Phase 0 に進んでください。
+### 第2章以降のアーキテクチャ（ハイブリッド dev）
 
 ```mermaid
 flowchart LR
-  ReactApp["React UI localhost:3000"] --> AmplifyAuth["Amplify Authenticator"]
+  ReactApp["React UI localhost:3000"] --> AmplifyAuth["Authenticator"]
   ReactApp --> BlocksClient["aws-blocks/client.js"]
-  BlocksClient -->|"Bearer ID token"| ApiGateway["API Gateway"]
+  BlocksClient -->|"Bearer ID token"| ApiGateway["API Gateway Sandbox"]
   ApiGateway --> BlocksLambda["Blocks Lambda"]
   BlocksLambda --> CognitoVerifier["CognitoVerifier"]
   BlocksLambda --> DistributedTable["DistributedTable"]
-  DistributedTable --> DynamoDB["DynamoDB"]
-  AmplifyAuth --> CognitoPool["Cognito User Pool Sandbox"]
+  DistributedTable --> DynamoDB["DynamoDB Sandbox"]
+  AmplifyAuth --> CognitoPool["Cognito User Pool"]
 ```
 
-| コンポーネント | 実行場所 | 読者が触るもの |
-| --- | --- | --- |
-| Cognito / Authenticator | Sandbox が作った User Pool | ブラウザのサインイン画面 |
-| Blocks RPC（ブラウザ） | **Sandbox 上の Lambda** | Todo の追加・一覧（裏で API を呼ぶ） |
-| Vite UI | ローカル dev server | http://localhost:3000 |
-
-「ローカルで dev しているのに Todo が消えない」のは、**データが AWS 上の DynamoDB に保存されている**ためです。ローカル mock だけではありません。
-
-### ファイル対応表
-
-| 役割 | Amplify | Blocks |
-| --- | --- | --- |
-| データ定義 | `amplify/data/resource.ts` | `aws-blocks/index.ts` の `DistributedTable` + Zod |
-| 認証（API 側） | モデルの `authorization` ルール | `CognitoVerifier` + `requireAuth` |
-| 認証（UI 側） | `Authenticator` 等 | 同じく `Authenticator`（第2章） |
-| フロント呼び出し | `client.models.Todo.*` | `api.*` |
-| 設定 | `amplify_outputs.json` | 同上 + 自動生成の `aws-blocks/client.js` |
+| コンポーネント | 実行場所 |
+| --- | --- |
+| UI（Vite） | ローカル |
+| Cognito / Authenticator | Sandbox User Pool |
+| Blocks RPC（ブラウザ） | Sandbox Lambda |
 
 ---
 
 ## Phase 0: Amplify ベースライン
 
-**ゴール:** Amplify Sandbox に Cognito・AppSync・Blocks 用 Lambda を載せ、`amplify_outputs.json` を手元に得る。
+**ゴール:** Sandbox で Cognito・AppSync・Blocks Lambda を provision し、`amplify_outputs.json` を得る。
 
-### 0-1. 認証の再確認
+### 0-1. 認証確認
 
 ```bash
 aws sts get-caller-identity
 ```
 
-失敗したら [AWS へのログイン](#aws-へのログインaws-login) に戻る。
-
-### 0-2. ターミナル A — Sandbox を起動
-
-**このターミナルは閉じないでください。** Sandbox はファイル変更を監視し続けます。
+### 0-2. ターミナル A — Sandbox
 
 ```bash
-cd hands-on-amplify-todo-to-aws-blocks
 nix develop
 npm run sandbox
 ```
 
-初回は **約 4〜5 分**かかります。次のような表示が出れば成功です。
+**成功の目安（この 4 つを確認してから 0-3 へ）:**
 
 - `✔ Deployment completed`
-- `AppSync API endpoint = https://....appsync-api....amazonaws.com/graphql`
-- `File written: amplify_outputs.json`
+- `AppSync API endpoint = https://...`
+- **`File written: amplify_outputs.json`** ← **これが出るまでターミナル B を起動しない**
 - `[Sandbox] Watching for file changes...`
 
-**うまくいかないとき:**
+初回は約 4〜5 分。`amplify_outputs.json` は **git に commit しない**。
 
-| 症状 | 対処 |
-| --- | --- |
-| `InvalidCredentialError` / `Unable to locate credentials` | `aws login` → `aws sts get-caller-identity` |
-| すぐ終了する | 上記の成功メッセージが出るまで待つ（初回は長い） |
-| リージョン関連のエラー | `aws configure get region` で意図したリージョンか確認 |
+### 0-3. ターミナル B — dev（0-2 完了後）
 
-`amplify_outputs.json` は **git に commit しない**（API Key 等が含まれるため）。
-
-### 0-3. ターミナル B — UI を起動
-
-**新しいターミナル**を開きます。
+**`File written: amplify_outputs.json` を確認したあと**、新しいターミナルで:
 
 ```bash
-cd hands-on-amplify-todo-to-aws-blocks
 nix develop
 npm run dev
 ```
 
-**確認:**
+- http://localhost:3000/ に Authenticator が表示されれば Phase 0 完了
 
-- ターミナルに `http://localhost:3000/` と表示される
-- ブラウザで開くと **Sign In / Create Account** の画面が出る
-
-ここまでで Phase 0 完了です。詳細ログ: [chapters/00-clone-and-amplify-baseline/README.md](chapters/00-clone-and-amplify-baseline/README.md)
+詳細: [chapters/00-clone-and-amplify-baseline/README.md](chapters/00-clone-and-amplify-baseline/README.md)
 
 ---
 
-## Phase 1: Blocks 統合
+## Phase 1: Blocks 統合（参考 — 本リポジトリでは実行しない）
 
-**ゴール:** 同じリポジトリに AWS Blocks の scaffold を載せる（本リポジトリでは **済み**）。自分でゼロからやる場合:
+本リポジトリは **すでに Phase 1 済み** です。次を **実行しないでください**（二重 scaffold の原因になります）。
 
 ```bash
+# 参考のみ — 本ハンズオンでは不要
 npx @aws-blocks/create-blocks-app@latest . --yes
 ```
 
-Amplify を検出すると `aws-blocks/` と `CognitoVerifier` の雛形が入ります。tag: `phase-1-blocks-scaffold`
+確認: `git checkout phase-1-blocks-scaffold` で scaffold 直後の状態を見られます。
 
 ---
 
 ## 第1章: 最小 CRUD
 
-**ゴール:** `client.models.Todo.*` をやめ、`api.createTodo` / `api.listTodos` に置き換える。**まだログインは不要**です。
+**ゴール:** `client.models.Todo.*` を `api.createTodo` / `api.listTodos` に置き換える。**認証はまだ入れない。**
 
-`aws-blocks/index.ts` に `DistributedTable` と `ApiNamespace` を定義し、フロントは:
-
-```typescript
-import { api } from 'aws-blocks';
-await api.createTodo(title);
-setTodos(await api.listTodos());
-```
-
-| Amplify | Blocks |
-| --- | --- |
-| `observeQuery().subscribe()` | 作成後に `load()` を **手動**で呼ぶ |
+### 1-1. 起点に戻る
 
 ```bash
+git checkout phase-1-blocks-scaffold
+```
+
+### 1-2. `aws-blocks/index.ts` を書き換える
+
+[`docs/chapters/02-chapter1-minimal-crud/snapshots/index.ts`](chapters/02-chapter1-minimal-crud/snapshots/index.ts) を **`aws-blocks/index.ts` にコピー**（または以下と同等の内容にする）:
+
+```typescript
+import { ApiNamespace, Scope } from '@aws-blocks/blocks';
+import { DistributedTable } from '@aws-blocks/bb-distributed-table';
+import { z } from 'zod';
+
+const scope = new Scope('hands-on-todo');
+
+const todoSchema = z.object({
+    todoId: z.string(),
+    content: z.string(),
+    createdAt: z.number(),
+});
+
+const todos = new DistributedTable(scope, 'todos', {
+    schema: todoSchema,
+    key: { partitionKey: 'todoId' },
+});
+
+export const api = new ApiNamespace(scope, 'api', (_context) => ({
+    async createTodo(content: string) {
+        const todoId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        const todo = { todoId, content, createdAt: Date.now() };
+        await todos.put(todo);
+        return todo;
+    },
+
+    async listTodos() {
+        const items: { todoId: string; content: string; createdAt: number }[] = [];
+        for await (const item of todos.scan()) {
+            items.push(item);
+        }
+        return items;
+    },
+}));
+```
+
+ポイント: `_context` は未使用（認証なし）。`partitionKey: 'todoId'` のみ（全員共通 Todo）。
+
+### 1-3. `src/App.tsx` を書き換える
+
+[`docs/chapters/02-chapter1-minimal-crud/snapshots/App.tsx`](chapters/02-chapter1-minimal-crud/snapshots/App.tsx) を参考に、少なくとも次を満たす:
+
+- `import { api } from 'aws-blocks'`
+- `await api.createTodo(content)` のあと `await load()`（`observeQuery` の代わりに手動再取得）
+- **Authenticator はまだ付けない**（第1章の App には無い）
+
+### 1-4. 動作確認
+
+```bash
+# ターミナル B（Sandbox は Phase 0 のまま起動していてよい）
 npm run dev
 ```
 
-ブラウザで Todo を追加し、一覧に出れば OK。tag: `chapter-1-minimal-crud`
+ブラウザで `+ new` → Todo が一覧に出れば OK。
+
+**この時点の保存先:** 上記「章ごとの dev モード」のとおり、Phase 0 後なら **Sandbox DynamoDB**。
+
+完成形との diff: `git diff chapter-1-minimal-crud`
 
 ---
 
 ## 第2章: Cognito + ユーザー分離
 
-**ゴール:** ログインユーザーごとに Todo が見えるようにする。
+**ゴール:** ログインユーザーごとに Todo を分離する。
 
-### 押さえる用語
-
-1. **`Authenticator`（UI）** — サインイン画面。Amplify UI コンポーネント。
-2. **`CognitoVerifier`（API）** — リクエストの `Authorization: Bearer <ID token>` を検証。**ログイン画面ではない**。
-3. **`auth.requireAuth(context)`** — 各 API の先頭で呼ぶ。未ログインは 401。
-4. **`userId: user.sub`** — Cognito が発行するユーザー一意 ID。partition key に使い、他人の行を読めなくする。
-
-```typescript
-async createTodo(title: string) {
-  const user = await auth.requireAuth(context);
-  await todos.put({ userId: user.sub, todoId, title, ... });
-}
-```
-
-### 手順（UI で確認する場合）
-
-1. ターミナル A・B が起動済みであること（Phase 0 と同じ）
-2. ブラウザで http://localhost:3000 を開く
-3. **Create Account** で `user-a@example.com` を登録（パスワード例: `TestPass1!` — 大文字・小文字・数字・記号が必要）
-4. Todo を 1 件追加（例: `A のタスク`）
-5. **Sign out** → `user-b@example.com` で別ユーザー登録 → `B のタスク` を追加
-6. それぞれ **自分の Todo だけ** が一覧に出ることを確認
-
-### 手順（コマンドで確認する場合）
+### 2-1. 起点に戻る
 
 ```bash
-bash scripts/ensure-chapter2-users.sh   # テストユーザーを CLI で作成（UI 登録の代替）
-npm run verify:chapter2               # 分離が API レベルで OK か自動チェック
+git checkout chapter-1-minimal-crud
 ```
 
-![user-b の Todo 一覧](chapters/03-chapter2-cognito-auth/screenshots/03-user-b-todos.png)
+### 2-2. `aws-blocks/index.ts` を書き換える
 
-tag: `chapter-2-cognito-auth` — 詳細: [chapters/03-chapter2-cognito-auth/README.md](chapters/03-chapter2-cognito-auth/README.md)
+[`docs/chapters/03-chapter2-cognito-auth/snapshots/index.ts`](chapters/03-chapter2-cognito-auth/snapshots/index.ts) を **`aws-blocks/index.ts` にコピー**（第3章の toggle/delete はまだ無くてよい。第2章 tag の内容に合わせる）。
+
+追加される要点:
+
+- `CognitoVerifier` + `auth.requireAuth(context)`
+- `userId: user.sub` を partition key に
+
+### 2-3. 環境変数 `COGNITO_*` について（手で設定しない）
+
+`index.ts` は `process.env.COGNITO_USER_POOL_ID` / `COGNITO_CLIENT_ID` を参照しますが、**読者が `.env` に書く必要はありません**。
+
+- **Sandbox デプロイ時:** `amplify/blocks.ts` が Lambda に環境変数を注入
+- **`npm run dev` 時:** dev server が `amplify_outputs.json` の `auth` セクションから注入
+- **フロント:** `aws-blocks/client.js` が `amplify_outputs.json` の `custom.blocks_api_url` と Cognito 設定を読む（自動生成。**編集しない**）
+
+Sandbox 完了後に一度:
+
+```bash
+npm run blocks:generate-client
+```
+
+### 2-4. `src/App.tsx` に Authenticator を追加
+
+[`docs/chapters/03-chapter2-cognito-auth/snapshots/App.tsx`](chapters/03-chapter2-cognito-auth/snapshots/App.tsx) を参考に `Authenticator` でラップ。
+
+### 2-5. 動作確認
+
+**推奨（再現性が高い）— CLI:**
+
+```bash
+bash scripts/ensure-chapter2-users.sh
+npm run verify:chapter2
+```
+
+**UI で試す場合:**
+
+- **`user-a@example.com` は使わない** — `example.com` はメールを受信できず、Cognito の確認コードで**必ず詰まります**
+- **自分の実メール**で Create Account するか、上記 CLI 手順を使う
+- パスワード例: `TestPass1!`（大文字・小文字・数字・記号が必要）
+
+![user-b](chapters/03-chapter2-cognito-auth/screenshots/03-user-b-todos.png)
+
+完成形との diff: `git diff chapter-2-cognito-auth`
 
 ---
 
-## 発展編: 第3章 Realtime / ソート / 更新削除
-
-本編のあとに読むセクションです。
-
-- `toggleTodo` — 楽観的ロック（`version`）
-- `deleteTodo`
-- `listTodos('priority' | 'title')` — Secondary Index
-- `subscribeTodos()` — Realtime（ローカルは mock WS、Sandbox では環境により未配線のことがある）
+## 発展編: 第3章
 
 ```bash
+git checkout chapter-2-cognito-auth
+# docs/chapters/04-chapter3-advanced/snapshots/index.ts 等を参照して追記
 npm run verify:chapter3
 ```
 
-tag: `chapter-3-advanced`
-
----
-
-## 対応表（まとめ）
-
-| やりたいこと | Amplify | Blocks |
-| --- | --- | --- |
-| 作成 | `client.models.Todo.create()` | `api.createTodo(title)` |
-| 一覧 | `observeQuery()` | `api.listTodos()` |
-| 認可 | `allow.publicApiKey()` | `requireAuth` + `userId` キー |
-| 完了トグル | `update` | `api.toggleTodo` |
-| リアルタイム | `observeQuery` | `subscribeTodos` + Realtime |
-
-## Git タグ
-
-`git checkout phase-0-amplify-baseline` などで途中状態に戻れます。
-
-`phase-0-amplify-baseline` → `phase-1-blocks-scaffold` → `chapter-1-minimal-crud` → `chapter-2-cognito-auth` → `chapter-3-advanced`
+- `subscribeTodos` が失敗した場合、UI は `load()` で動作（Realtime 未配線時は subscribe がエラーになるだけ）
 
 ---
 
 ## トラブルシュート
 
-### `ampx sandbox` で認証エラー
-
-1. `aws login`
-2. `aws sts get-caller-identity` が通るか確認
-3. 名前付きプロファイルを使っているなら `.env.local` の `AWS_PROFILE` と一致しているか確認
-4. `npm run sandbox` を再実行
-
-### `npm run dev` ですぐプロセスが終わる
-
-`aws-blocks/scripts/server.ts` で `await startDevServer(...)` が必要です（本リポジトリでは設定済み）。
-
-### ポート 3000 が使えない
-
-別プロセスが占有している可能性があります。`lsof -i :3000` で確認し、古い `npm run dev` を終了してください。
-
-### CLI で Cognito にパスワードログインできない
-
-Amplify が作る App Client は `USER_PASSWORD_AUTH` が無効なことがあります。`npm run verify:chapter2` は Amplify の SRP `signIn` を使います（手順用スクリプト参照）。
-
-### `aws-blocks/client.js` を編集してはいけない
-
-`npm run dev` または `npm run blocks:generate-client` で上書きされます。Sandbox 後は `npm run blocks:generate-client` を実行してください。
-
-### Realtime が動かない
-
-`subscribeTodos` が失敗しても UI は `load()` で動きます。第3章は発展編として割り切って構いません。
+| 症状 | 対処 |
+| --- | --- |
+| `npm install` で `@aws-blocks/*` が見つからない | プレビュー公開状況を確認。ここでハンズオンは止まる |
+| Sandbox 認証エラー | `aws login` → `aws sts get-caller-identity` |
+| `npm run dev` が `amplify_outputs.json` で落ちる | ターミナル A の Sandbox が完了しているか確認。0-2 の `File written` を待つ |
+| 第1章なのにログインを求められる | `git checkout phase-1-blocks-scaffold` からやり直しているか確認（HEAD は第2章以降のコード） |
+| UI サインアップで止まる | `example.com` は不可。実メールか `ensure-chapter2-users.sh` |
+| `client.js` を編集した | 上書きされる。`npm run blocks:generate-client` |
 
 ---
 
-## 公開・秘密情報
+## 公開・片付け
 
 - リポジトリ: https://github.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks
-- `amplify_outputs.json` は commit しない
-- Sandbox 片付け: `npm run sandbox:delete`（任意）— [SANDBOX-OPERATIONS.md](SANDBOX-OPERATIONS.md)
+- Sandbox 削除（任意）: `npm run sandbox:delete` — [SANDBOX-OPERATIONS.md](SANDBOX-OPERATIONS.md)
 
 ---
 
-## まとめ — 読者が持ち帰る設計観点
+## まとめ
 
-1. **AWS Blocks** — Block 単位でバックエンド機能を組み立て、同じ TypeScript がローカルと AWS で動く（プレビュー）。
-2. **認可の置き場所** — Amplify はモデルルール、Blocks は API 内の `requireAuth` とキー設計。
-3. **データの境界** — `publicApiKey()` は学習用。本番では `user.sub` で行を分離する。
-4. **抽象化の単位** — 「モデル」から「ドメイン API」へ。コード量は増えても処理の流れが追いやすい。
-5. **ハイブリッド dev** — UI はローカル、Cognito と Blocks RPC は Sandbox。どこで何が動いているかを意識する。
-
-次のステップ: [AWS Blocks Developer Guide](https://docs.aws.amazon.com/blocks/latest/devguide/getting-started.html) と、本リポジトリの git tag を辿りながら差分を読むと理解が深まります。
+1. **git tag で章ごとに checkout** してから編集する（HEAD は完成形）。
+2. **保存先は章と Sandbox の有無で変わる**（第1章単体は `.bb-data/`、本記事の Phase 0 後は DynamoDB）。
+3. **認可** — Amplify はモデルルール、Blocks は API 内 `requireAuth` + `userId`。
+4. **Cognito env** — `amplify_outputs.json` 経由で自動注入。手設定不要。
+5. 次: [AWS Blocks Developer Guide](https://docs.aws.amazon.com/blocks/latest/devguide/getting-started.html)

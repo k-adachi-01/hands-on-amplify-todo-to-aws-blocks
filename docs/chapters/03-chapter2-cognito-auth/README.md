@@ -50,11 +50,13 @@ npm run blocks:generate-client
 
 ### 方法 A — UI（Create Account タブ）
 
-1. **Create Account** で `user-a@example.com` を登録
-2. メール確認コードが必要な場合は Cognito から届いたコードを入力
-3. パスワードは User Pool ポリシーに従う（例: `TestPass1!` — 大文字・小文字・数字・記号各1以上）
+**注意:** `user-a@example.com` など `@example.com` はメールを受信できません。Cognito の確認コードで**必ず詰まります**。自分の実メールを使うか、方法 B（CLI）を推奨。
 
-### 方法 B — AWS CLI（ハンズオン記録用・メール不要）
+1. **Create Account** で**自分の実メール**を登録
+2. 確認コードが届いたら入力
+3. パスワードは User Pool ポリシーに従う（例: `TestPass1!`）
+
+### 方法 B — AWS CLI（再現性が高い・メール不要）
 
 ```bash
 bash scripts/ensure-chapter2-users.sh
@@ -62,14 +64,20 @@ bash scripts/ensure-chapter2-users.sh
 
 `amplify_outputs.json` の `auth.user_pool_id` を使う。パスワードは `TestPass1!`（`CHAPTER2_TEST_PASSWORD` で上書き可）。
 
+### `COGNITO_USER_POOL_ID` / `COGNITO_CLIENT_ID` について
+
+`aws-blocks/index.ts` が参照するこれらの環境変数は、**読者が手で設定しません**。`npm run dev` / Sandbox デプロイ時に `amplify_outputs.json` から注入されます（`amplify/blocks.ts` 参照）。
+
 **注意:** Amplify 管理の App Client は `USER_PASSWORD_AUTH` 非許可のため、トークン取得は `npm run verify:chapter2` 内の Amplify SRP `signIn` を使う（`scripts/verify-chapter2-auth.ts`）。
 
 ## 手順 2-2: UI でユーザー分離を確認
 
-1. **Sign In** で `user-a@example.com` / `TestPass1!` でログイン
+方法 B で作成した `user-a@example.com` / `user-b@example.com` で Sign In する場合、または方法 A で登録した自分のメールで:
+
+1. **Sign In** でログイン
 2. Todo を 1 件追加（例: `A のタスク`）
 3. 右上 **Sign out**
-4. `user-b@example.com` でログイン → `B のタスク` を追加
+4. 別ユーザーでログイン → 別の Todo を追加
 5. 各ユーザーで一覧が **自分の Todo のみ** であることを確認
 6. スクリーンショット（Playwright 自動取得可）:
     - [`screenshots/02-user-a-todos.png`](screenshots/02-user-a-todos.png) — `npx tsx scripts/capture-chapter2-screenshots.ts`

@@ -80,6 +80,8 @@ npm run sandbox   # 内部: scripts/run-sandbox.sh → ampx sandbox --profile $A
 
 ## 手順 0-5: ターミナル B — Blocks dev + UI（完了）
 
+**前提: 手順 0-4 で `File written: amplify_outputs.json` を確認してから** 新ターミナルで起動する。
+
 ```bash
 npm run dev
 ```
@@ -92,13 +94,15 @@ npm run dev
 | Blocks RPC | http://localhost:3000/aws-blocks/api |
 | Realtime WS | `bb-realtime` dev attachment |
 
-### ハイブリッド構成（記事用メモ）
+### ハイブリッド構成（記事と同期）
 
-| コンポーネント | 実行場所 |
-| --- | --- |
-| Cognito 認証 UI | Sandbox provision の User Pool |
-| Blocks API（開発中） | ローカル dev server の mock |
-| Blocks Lambda（本番相当） | `custom.blocks_api_url`（Sandbox 上） |
+章ごとに Blocks RPC の行き先が異なります。詳細は [`docs/ARTICLE-DRAFT.md`](../../ARTICLE-DRAFT.md) の「章ごとの dev モード」。
+
+| 章 | Blocks RPC（ブラウザ） | 保存先 |
+| --- | --- | --- |
+| 第1章（Sandbox なし） | ローカル mock | `.bb-data/` |
+| 第1章以降（本ハンズオン Phase 0 後） | Sandbox `custom.blocks_api_url` | Sandbox DynamoDB |
+| Cognito UI | Sandbox User Pool | — |
 
 サインイン画面スクリーンショット: [`screenshots/02-post-sandbox-authenticator.png`](screenshots/02-post-sandbox-authenticator.png)
 
