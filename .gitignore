@@ -19,6 +19,7 @@ cdk.out/
 
 # Logs & local
 *.log
+!docs/chapters/**/commands/*.log
 logs/
 *.local
 .DS_Store

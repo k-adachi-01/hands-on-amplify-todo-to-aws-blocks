@@ -1,0 +1,14 @@
+=== 2026-06-23T01:15:16+09:00 ===
+pwd: /Users/adachi/src/260618_aws-blocks/hands-on-walkthrough
+node: v22.22.3
+npm: 10.9.8
+git HEAD: d7fe2dfce4d7bcc8ba0a32a03954225325147885
+command: timeout 25 npm run dev
+---
+
+> amplify-vite-react-template@0.0.0 dev
+> tsx watch aws-blocks/scripts/server.ts
+
+Loading backend...
+Deploying local resources...
+📝 Generating client code...

@@ -4,9 +4,8 @@ import { startDevServer } from '@aws-blocks/blocks/scripts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/** API のみ（検証・CI 用）。フロントは別途 vite。 */
 await startDevServer({
     backendPath: join(__dirname, '..', 'index.ts'),
-    port: 3000,
-    frontendCommand: 'npx vite --port 3100 --strictPort',
-    frontendPort: 3100,
+    port: 3002,
 });

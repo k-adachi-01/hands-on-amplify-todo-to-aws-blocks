@@ -1,0 +1,7 @@
+GET http://127.0.0.1:3002/ (API-only server may return 404)
+HTTP 404
+RPC api.createTodo
+{"jsonrpc":"2.0","result":{"todoId":"mqpfa28d-mvy3sd","content":"verify-script-todo","createdAt":1782145268941},"id":1}
+RPC api.listTodos
+{"jsonrpc":"2.0","result":[{"todoId":"mqpfa28d-mvy3sd","content":"verify-script-todo","createdAt":1782145268941}],"id":2}
+OK

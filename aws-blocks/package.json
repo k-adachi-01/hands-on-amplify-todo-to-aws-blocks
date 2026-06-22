@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@aws-blocks/blocks": "*",
-    "@aws-blocks/bb-kv-store": "*",
-    "aws-jwt-verify": "^5.0.0"
+    "@aws-blocks/bb-distributed-table": "*",
+    "aws-jwt-verify": "^5.0.0",
+    "zod": "^4.3.0"
   }
 }

@@ -4,13 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "tsx watch aws-blocks/scripts/server.ts",
+    "dev:vite": "vite",
+    "dev:amplify": "vite",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "sandbox": "cross-env NODE_OPTIONS=\"--conditions=cdk\" AMPLIFY_SANDBOX=true npx ampx sandbox",
     "sandbox:delete": "cross-env NODE_OPTIONS=\"--conditions=cdk\" npx ampx sandbox delete --yes",
-    "blocks:dev": "tsx watch aws-blocks/scripts/server.ts",
+    "blocks:api": "tsx aws-blocks/scripts/server-api-only.ts",
+    "verify:chapter1": "bash scripts/verify-chapter1-api.sh",
     "blocks:generate-client": "cross-env NODE_OPTIONS=\"--conditions=aws-runtime\" tsx aws-blocks/scripts/generate-client.ts"
   },
   "dependencies": {

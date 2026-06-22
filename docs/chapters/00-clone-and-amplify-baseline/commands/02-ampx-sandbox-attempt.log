@@ -1,0 +1,55 @@
+=== 2026-06-23T01:11:12+09:00 ===
+pwd: /Users/adachi/src/260618_aws-blocks/hands-on-walkthrough
+node: v22.22.3
+npm: 10.9.8
+git HEAD: 3fbe57c6f3dfe25e5881976f8da65fa6c3b71343
+command: npx ampx sandbox --once
+---
+
+Notices:
+
+3127	Amplify Function is dropping support of Node 16 Lambda Functions
+
+	If you have Node 16 Lambda functions defined with Amplify Function, we highly
+	recommend updating your function's runtime to newer Node LTS versions (Node 20+).
+
+	More information at: https://github.com/aws-amplify/amplify-backend/issues/3127
+
+
+If you don't want to see a notice anymore, use npx ampx notices acknowledge <notice-id>
+
+ampx sandbox
+
+Starts sandbox, watch mode for Amplify backend deployments
+
+Commands:
+  ampx sandbox delete            Deletes sandbox environment
+  ampx sandbox secret <command>  Manage sandbox secrets
+  ampx sandbox seed              Seeds sandbox environment
+
+Logs streaming
+      --stream-function-logs  Whether to stream function execution logs. Default
+                              : false. Use --logs-filter in addition to this fla
+                              g to stream specific function logs       [boolean]
+      --logs-filter           Regex pattern to filter logs from only matched fun
+                              ctions. E.g. to stream logs for a function, specif
+                              y it's name, and to stream logs from all functions
+                               starting with auth specify 'auth' Default: Stream
+                               all logs                                  [array]
+      --logs-out-file         File to append the streaming logs. The file is cre
+                              ated if it does not exist. Default: stdout[string]
+
+Options:
+      --debug            Print debug logs to the console
+                                                      [boolean] [default: false]
+      --dir-to-watch     Directory to watch for file changes. All subdirectories
+                          and files will be included. Defaults to the amplify di
+                         rectory.                                       [string]
+      --exclude          An array of paths or glob patterns to ignore. Paths can
+                          be relative or absolute and can either be files or dir
+                         ectories                                        [array]
+      --identifier       An optional identifier to distinguish between different
+                          sandboxes. Default is the name of the system user exec
+                         uting the process                              [string]
+      --outputs-format   amplify_outputs file format
+                  [string] [choi
