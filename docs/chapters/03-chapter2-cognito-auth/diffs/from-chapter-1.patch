@@ -1,0 +1,753 @@
+diff --git a/.gitignore b/.gitignore
+index d192a65..9691f25 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -4,6 +4,7 @@ dist/
+ dist-ssr/
+ .bb-data/
+ .blocks-sandbox/
++.blocks/
+ .npm-cache/
+ 
+ # Amplify / AWS（秘密情報を含むためコミットしない）
+diff --git a/aws-blocks/index.ts b/aws-blocks/index.ts
+index b4ef20c..f0a12c5 100644
+--- a/aws-blocks/index.ts
++++ b/aws-blocks/index.ts
+@@ -1,29 +1,54 @@
+ import { ApiNamespace, Scope } from '@aws-blocks/blocks';
+ import { DistributedTable } from '@aws-blocks/bb-distributed-table';
+ import { z } from 'zod';
++import { CognitoVerifier } from './cognito-verifier.js';
+ 
+ const scope = new Scope('hands-on-todo');
+ 
++const auth = new CognitoVerifier({
++    userPoolId: process.env.COGNITO_USER_POOL_ID!,
++    clientId: process.env.COGNITO_CLIENT_ID!,
++    tokenUse: 'id',
++});
++
+ const todoSchema = z.object({
++    userId: z.string(),
+     todoId: z.string(),
+-    content: z.string(),
++    title: z.string(),
+     createdAt: z.number(),
+ });
+ 
+ const todos = new DistributedTable(scope, 'todos', {
+     schema: todoSchema,
+-    key: { partitionKey: 'todoId' },
++    key: { partitionKey: 'userId', sortKey: 'todoId' },
+ });
+ 
+-export const api = new ApiNamespace(scope, 'api', (_context) => ({
+-    async createTodo(content: string) {
++async function collectAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
++    const items: T[] = [];
++    for await (const item of iterable) {
++        items.push(item);
++    }
++    return items;
++}
++
++export const api = new ApiNamespace(scope, 'api', (context) => ({
++    async createTodo(title: string) {
++        const user = await auth.requireAuth(context);
+         const todoId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+-        const todo = { todoId, content, createdAt: Date.now() };
++        const todo = {
++            userId: user.sub,
++            todoId,
++            title,
++            createdAt: Date.now(),
++        };
+         await todos.put(todo);
+         return todo;
+     },
+ 
+     async listTodos() {
+-        return await Array.fromAsync(todos.scan());
++        const user = await auth.requireAuth(context);
++        return await collectAsync(
++            todos.query({ where: { userId: { equals: user.sub } } }),
++        );
+     },
+ }));
+diff --git a/aws-blocks/package.json b/aws-blocks/package.json
+index 3aa6940..d7212e9 100644
+--- a/aws-blocks/package.json
++++ b/aws-blocks/package.json
+@@ -1,21 +1,21 @@
+ {
+-  "name": "aws-blocks",
+-  "version": "0.0.0",
+-  "private": true,
+-  "type": "module",
+-  "exports": {
+-    ".": {
+-      "types": "./index.ts",
+-      "browser": "./client.js",
+-      "react-server": "./client.js",
+-      "import": "./client.js",
+-      "default": "./index.ts"
++    "name": "aws-blocks",
++    "version": "0.0.0",
++    "private": true,
++    "type": "module",
++    "exports": {
++        ".": {
++            "types": "./index.ts",
++            "browser": "./client.js",
++            "react-server": "./client.js",
++            "import": "./client.js",
++            "default": "./index.ts"
++        }
++    },
++    "dependencies": {
++        "@aws-blocks/blocks": "*",
++        "@aws-blocks/bb-distributed-table": "*",
++        "aws-jwt-verify": "^5.0.0",
++        "zod": "^4.3.0"
+     }
+-  },
+-  "dependencies": {
+-    "@aws-blocks/blocks": "*",
+-    "@aws-blocks/bb-distributed-table": "*",
+-    "aws-jwt-verify": "^5.0.0",
+-    "zod": "^4.3.0"
+-  }
+ }
+diff --git a/docs/chapters/03-chapter2-cognito-auth/snapshots/App.tsx b/docs/chapters/03-chapter2-cognito-auth/snapshots/App.tsx
+new file mode 100644
+index 0000000..c91c15f
+--- /dev/null
++++ b/docs/chapters/03-chapter2-cognito-auth/snapshots/App.tsx
+@@ -0,0 +1,74 @@
++import { Authenticator } from '@aws-amplify/ui-react';
++import '@aws-amplify/ui-react/styles.css';
++import { api } from 'aws-blocks';
++import { useCallback, useEffect, useState } from 'react';
++import './App.css';
++
++type Todo = {
++    todoId: string;
++    title: string;
++};
++
++function TodoApp() {
++    const [todos, setTodos] = useState<Todo[]>([]);
++    const [newTitle, setNewTitle] = useState('');
++    const [error, setError] = useState<string | null>(null);
++
++    const load = useCallback(async () => {
++        setError(null);
++        try {
++            setTodos(await api.listTodos());
++        } catch (err) {
++            setError(err instanceof Error ? err.message : 'Failed to load todos');
++        }
++    }, []);
++
++    useEffect(() => {
++        load();
++    }, [load]);
++
++    async function addTodo() {
++        const title = newTitle.trim();
++        if (!title) return;
++        setError(null);
++        try {
++            await api.createTodo(title);
++            setNewTitle('');
++            await load();
++        } catch (err) {
++            setError(err instanceof Error ? err.message : 'Failed to add todo');
++        }
++    }
++
++    return (
++        <main>
++            <h1>My todos (AWS Blocks + Cognito)</h1>
++            {error && <p role="alert">{error}</p>}
++            <div>
++                <input
++                    value={newTitle}
++                    onChange={(e) => setNewTitle(e.target.value)}
++                    placeholder="New todo"
++                />
++                <button type="button" onClick={addTodo}>
++                    Add
++                </button>
++            </div>
++            <ul>
++                {todos.map((todo) => (
++                    <li key={todo.todoId}>{todo.title}</li>
++                ))}
++            </ul>
++        </main>
++    );
++}
++
++function App() {
++    return (
++        <Authenticator loginMechanisms={['email']}>
++            <TodoApp />
++        </Authenticator>
++    );
++}
++
++export default App;
+diff --git a/docs/chapters/03-chapter2-cognito-auth/snapshots/index.ts b/docs/chapters/03-chapter2-cognito-auth/snapshots/index.ts
+new file mode 100644
+index 0000000..f0a12c5
+--- /dev/null
++++ b/docs/chapters/03-chapter2-cognito-auth/snapshots/index.ts
+@@ -0,0 +1,54 @@
++import { ApiNamespace, Scope } from '@aws-blocks/blocks';
++import { DistributedTable } from '@aws-blocks/bb-distributed-table';
++import { z } from 'zod';
++import { CognitoVerifier } from './cognito-verifier.js';
++
++const scope = new Scope('hands-on-todo');
++
++const auth = new CognitoVerifier({
++    userPoolId: process.env.COGNITO_USER_POOL_ID!,
++    clientId: process.env.COGNITO_CLIENT_ID!,
++    tokenUse: 'id',
++});
++
++const todoSchema = z.object({
++    userId: z.string(),
++    todoId: z.string(),
++    title: z.string(),
++    createdAt: z.number(),
++});
++
++const todos = new DistributedTable(scope, 'todos', {
++    schema: todoSchema,
++    key: { partitionKey: 'userId', sortKey: 'todoId' },
++});
++
++async function collectAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
++    const items: T[] = [];
++    for await (const item of iterable) {
++        items.push(item);
++    }
++    return items;
++}
++
++export const api = new ApiNamespace(scope, 'api', (context) => ({
++    async createTodo(title: string) {
++        const user = await auth.requireAuth(context);
++        const todoId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
++        const todo = {
++            userId: user.sub,
++            todoId,
++            title,
++            createdAt: Date.now(),
++        };
++        await todos.put(todo);
++        return todo;
++    },
++
++    async listTodos() {
++        const user = await auth.requireAuth(context);
++        return await collectAsync(
++            todos.query({ where: { userId: { equals: user.sub } } }),
++        );
++    },
++}));
+diff --git a/docs/chapters/04-chapter3-advanced/snapshots/index.ts b/docs/chapters/04-chapter3-advanced/snapshots/index.ts
+new file mode 100644
+index 0000000..67ac561
+--- /dev/null
++++ b/docs/chapters/04-chapter3-advanced/snapshots/index.ts
+@@ -0,0 +1,107 @@
++import { ApiNamespace, Scope } from '@aws-blocks/blocks';
++import { DistributedTable } from '@aws-blocks/bb-distributed-table';
++import { Realtime } from '@aws-blocks/bb-realtime';
++import { z } from 'zod';
++import { CognitoVerifier } from './cognito-verifier.js';
++
++const scope = new Scope('hands-on-todo');
++
++const auth = new CognitoVerifier({
++    userPoolId: process.env.COGNITO_USER_POOL_ID!,
++    clientId: process.env.COGNITO_CLIENT_ID!,
++    tokenUse: 'id',
++});
++
++const todoSchema = z.object({
++    userId: z.string(),
++    todoId: z.string(),
++    title: z.string(),
++    completed: z.boolean(),
++    priority: z.number(),
++    version: z.number(),
++    createdAt: z.number(),
++});
++
++const todos = new DistributedTable(scope, 'todos', {
++    schema: todoSchema,
++    key: { partitionKey: 'userId', sortKey: 'todoId' },
++    indexes: {
++        byPriority: { partitionKey: 'userId', sortKey: 'priority' },
++        byTitle: { partitionKey: 'userId', sortKey: 'title' },
++    },
++});
++
++const realtime = new Realtime(scope, 'live', {
++    namespaces: {
++        todos: Realtime.namespace(
++            z.object({
++                action: z.enum(['created', 'updated', 'deleted']),
++                todoId: z.string(),
++            }),
++        ),
++    },
++});
++
++async function collectAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
++    const items: T[] = [];
++    for await (const item of iterable) {
++        items.push(item);
++    }
++    return items;
++}
++
++export const api = new ApiNamespace(scope, 'api', (context) => ({
++    async subscribeTodos() {
++        const user = await auth.requireAuth(context);
++        return realtime.getChannel('todos', user.sub);
++    },
++
++    async createTodo(title: string, priority = 2) {
++        const user = await auth.requireAuth(context);
++        const todoId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
++        const todo = {
++            userId: user.sub,
++            todoId,
++            title,
++            completed: false,
++            priority,
++            version: 1,
++            createdAt: Date.now(),
++        };
++        await todos.put(todo);
++        await realtime.publish('todos', user.sub, { action: 'created', todoId });
++        return todo;
++    },
++
++    async listTodos(sortBy?: 'priority' | 'title') {
++        const user = await auth.requireAuth(context);
++        if (sortBy) {
++            const index = sortBy === 'priority' ? 'byPriority' : 'byTitle';
++            return await collectAsync(
++                todos.query({ index, where: { userId: { equals: user.sub } } }),
++            );
++        }
++        return await collectAsync(
++            todos.query({ where: { userId: { equals: user.sub } } }),
++        );
++    },
++
++    async toggleTodo(todoId: string) {
++        const user = await auth.requireAuth(context);
++        const todo = await todos.get({ userId: user.sub, todoId });
++        if (!todo) throw new Error('Todo not found');
++        await todos.put(
++            { ...todo, completed: !todo.completed, version: todo.version + 1 },
++            { ifFieldEquals: { version: todo.version } },
++        );
++        await realtime.publish('todos', user.sub, { action: 'updated', todoId });
++        return { success: true };
++    },
++
++    async deleteTodo(todoId: string) {
++        const user = await auth.requireAuth(context);
++        await todos.delete({ userId: user.sub, todoId });
++        await realtime.publish('todos', user.sub, { action: 'deleted', todoId });
++        return { success: true };
++    },
++}));
+diff --git a/package-lock.json b/package-lock.json
+index 05f97da..b762f0e 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -12,6 +12,7 @@
+       ],
+       "dependencies": {
+         "@aws-amplify/ui-react": "~6.13.2",
++        "@aws-blocks/bb-realtime": "*",
+         "@aws-blocks/blocks": "*",
+         "aws-amplify": "~6.15.10",
+         "react": "~18.3.1",
+@@ -48,6 +49,7 @@
+       "version": "0.0.0",
+       "dependencies": {
+         "@aws-blocks/bb-distributed-table": "*",
++        "@aws-blocks/bb-realtime": "*",
+         "@aws-blocks/blocks": "*",
+         "aws-jwt-verify": "^5.0.0",
+         "zod": "^4.3.0"
+diff --git a/package.json b/package.json
+index 926a6c8..612c66e 100644
+--- a/package.json
++++ b/package.json
+@@ -1,55 +1,56 @@
+ {
+-  "name": "amplify-vite-react-template",
+-  "private": true,
+-  "version": "0.0.0",
+-  "type": "module",
+-  "scripts": {
+-    "dev": "tsx watch aws-blocks/scripts/server.ts",
+-    "dev:vite": "vite",
+-    "dev:amplify": "vite",
+-    "build": "tsc && vite build",
+-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+-    "preview": "vite preview",
+-    "sandbox": "cross-env NODE_OPTIONS=\"--conditions=cdk\" AMPLIFY_SANDBOX=true npx ampx sandbox",
+-    "sandbox:delete": "cross-env NODE_OPTIONS=\"--conditions=cdk\" npx ampx sandbox delete --yes",
+-    "blocks:api": "tsx aws-blocks/scripts/server-api-only.ts",
+-    "verify:chapter1": "bash scripts/verify-chapter1-api.sh",
+-    "blocks:generate-client": "cross-env NODE_OPTIONS=\"--conditions=aws-runtime\" tsx aws-blocks/scripts/generate-client.ts"
+-  },
+-  "dependencies": {
+-    "@aws-amplify/ui-react": "~6.13.2",
+-    "aws-amplify": "~6.15.10",
+-    "react": "~18.3.1",
+-    "react-dom": "~18.3.1",
+-    "@aws-blocks/blocks": "*"
+-  },
+-  "engines": {
+-    "node": ">= 20.20.0",
+-    "npm": ">= 10.8.0"
+-  },
+-  "devDependencies": {
+-    "@aws-amplify/backend": "~1.19.0",
+-    "@aws-amplify/backend-cli": "~1.8.1",
+-    "@eslint/compat": "~2.0.1",
+-    "@eslint/eslintrc": "~3.3.3",
+-    "@eslint/js": "~9.39.2",
+-    "@types/react": "~18.3.27",
+-    "@types/react-dom": "~18.3.7",
+-    "@typescript-eslint/eslint-plugin": "~8.53.0",
+-    "@typescript-eslint/parser": "~8.53.0",
+-    "@vitejs/plugin-react": "~5.1.2",
+-    "esbuild": "~0.27.2",
+-    "eslint": "~9.39.2",
+-    "eslint-plugin-react-hooks": "~7.0.1",
+-    "eslint-plugin-react-refresh": "~0.4.26",
+-    "globals": "~17.0.0",
+-    "typescript": "~5.9.3",
+-    "vite": "~7.3.1",
+-    "tsx": "^4.7.0",
+-    "@types/node": "^20.0.0",
+-    "cross-env": "^7.0.3"
+-  },
+-  "workspaces": [
+-    "aws-blocks"
+-  ]
+-}
+\ No newline at end of file
++    "name": "amplify-vite-react-template",
++    "private": true,
++    "version": "0.0.0",
++    "type": "module",
++    "scripts": {
++        "dev": "tsx watch aws-blocks/scripts/server.ts",
++        "dev:vite": "vite",
++        "dev:amplify": "vite",
++        "build": "tsc && vite build",
++        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
++        "preview": "vite preview",
++        "sandbox": "cross-env NODE_OPTIONS=\"--conditions=cdk\" AMPLIFY_SANDBOX=true npx ampx sandbox",
++        "sandbox:delete": "cross-env NODE_OPTIONS=\"--conditions=cdk\" npx ampx sandbox delete --yes",
++        "blocks:api": "tsx aws-blocks/scripts/server-api-only.ts",
++        "verify:chapter1": "bash scripts/verify-chapter1-api.sh",
++        "blocks:generate-client": "cross-env NODE_OPTIONS=\"--conditions=aws-runtime\" tsx aws-blocks/scripts/generate-client.ts"
++    },
++    "dependencies": {
++        "@aws-amplify/ui-react": "~6.13.2",
++        "aws-amplify": "~6.15.10",
++        "react": "~18.3.1",
++        "react-dom": "~18.3.1",
++        "@aws-blocks/blocks": "*",
++        "@aws-blocks/bb-realtime": "*"
++    },
++    "engines": {
++        "node": ">= 20.20.0",
++        "npm": ">= 10.8.0"
++    },
++    "devDependencies": {
++        "@aws-amplify/backend": "~1.19.0",
++        "@aws-amplify/backend-cli": "~1.8.1",
++        "@eslint/compat": "~2.0.1",
++        "@eslint/eslintrc": "~3.3.3",
++        "@eslint/js": "~9.39.2",
++        "@types/react": "~18.3.27",
++        "@types/react-dom": "~18.3.7",
++        "@typescript-eslint/eslint-plugin": "~8.53.0",
++        "@typescript-eslint/parser": "~8.53.0",
++        "@vitejs/plugin-react": "~5.1.2",
++        "esbuild": "~0.27.2",
++        "eslint": "~9.39.2",
++        "eslint-plugin-react-hooks": "~7.0.1",
++        "eslint-plugin-react-refresh": "~0.4.26",
++        "globals": "~17.0.0",
++        "typescript": "~5.9.3",
++        "vite": "~7.3.1",
++        "tsx": "^4.7.0",
++        "@types/node": "^20.0.0",
++        "cross-env": "^7.0.3"
++    },
++    "workspaces": [
++        "aws-blocks"
++    ]
++}
+diff --git a/scripts/ensure-chapter2-users.sh b/scripts/ensure-chapter2-users.sh
+new file mode 100755
+index 0000000..5e2d471
+--- /dev/null
++++ b/scripts/ensure-chapter2-users.sh
+@@ -0,0 +1,37 @@
++#!/usr/bin/env bash
++# Create chapter-2 test users in Sandbox Cognito (email pre-verified, no mail).
++set -euo pipefail
++ROOT="$(cd "$(dirname "$0")/.." && pwd)"
++cd "$ROOT"
++if [[ -f .env.local ]]; then
++  # shellcheck disable=SC1091
++  source .env.local
++fi
++
++PROFILE_ARGS=()
++if [[ -n "${AWS_PROFILE:-}" ]]; then
++  PROFILE_ARGS=(--profile "$AWS_PROFILE")
++fi
++
++POOL="$(node -p "require('./amplify_outputs.json').auth.user_pool_id")"
++PASS="${CHAPTER2_TEST_PASSWORD:-TestPass1!}"
++
++for U in "${CHAPTER2_USER_A:-user-a@example.com}" "${CHAPTER2_USER_B:-user-b@example.com}"; do
++  if aws cognito-idp admin-get-user "${PROFILE_ARGS[@]}" --user-pool-id "$POOL" --username "$U" >/dev/null 2>&1; then
++    echo "User exists: $U"
++    continue
++  fi
++  echo "Creating user: $U"
++  aws cognito-idp admin-create-user \
++    "${PROFILE_ARGS[@]}" \
++    --user-pool-id "$POOL" \
++    --username "$U" \
++    --user-attributes "Name=email,Value=$U" "Name=email_verified,Value=true" \
++    --message-action SUPPRESS
++  aws cognito-idp admin-set-user-password \
++    "${PROFILE_ARGS[@]}" \
++    --user-pool-id "$POOL" \
++    --username "$U" \
++    --password "$PASS" \
++    --permanent
++done
+diff --git a/scripts/verify-chapter2-auth.ts b/scripts/verify-chapter2-auth.ts
+new file mode 100644
+index 0000000..5c0ff37
+--- /dev/null
++++ b/scripts/verify-chapter2-auth.ts
+@@ -0,0 +1,88 @@
++/**
++ * Chapter 2 auth isolation verify — uses Amplify SRP signIn (CLI USER_PASSWORD_AUTH
++ * is disabled on Amplify-managed app clients).
++ *
++ * Run: npx tsx scripts/verify-chapter2-auth.ts
++ */
++import { readFileSync } from 'node:fs';
++import { resolve, dirname } from 'node:path';
++import { fileURLToPath } from 'node:url';
++import { Amplify } from 'aws-amplify';
++import { fetchAuthSession, signIn, signOut } from 'aws-amplify/auth';
++
++const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
++const outputs = JSON.parse(
++    readFileSync(resolve(root, 'amplify_outputs.json'), 'utf8'),
++);
++Amplify.configure(outputs);
++
++const API =
++    process.env.BLOCKS_API_URL ?? outputs.custom?.blocks_api_url;
++const PASS = process.env.CHAPTER2_TEST_PASSWORD ?? 'TestPass1!';
++const USER_A = process.env.CHAPTER2_USER_A ?? 'user-a@example.com';
++const USER_B = process.env.CHAPTER2_USER_B ?? 'user-b@example.com';
++
++async function idTokenFor(email: string): Promise<string> {
++    try {
++        await signOut();
++    } catch {
++        // no session
++    }
++    const result = await signIn({ username: email, password: PASS });
++    if (!result.isSignedIn) {
++        throw new Error(`signIn incomplete for ${email}: ${result.nextStep.signInStep}`);
++    }
++    const session = await fetchAuthSession();
++    const token = session.tokens?.idToken?.toString();
++    if (!token) throw new Error(`No id token for ${email}`);
++    return token;
++}
++
++async function rpc(token: string, method: string, params: unknown[] = []) {
++    const res = await fetch(API, {
++        method: 'POST',
++        headers: {
++            'Content-Type': 'application/json',
++            Authorization: `Bearer ${token}`,
++        },
++        body: JSON.stringify({ jsonrpc: '2.0', method, params, id: 1 }),
++    });
++    if (!res.ok) {
++        throw new Error(`HTTP ${res.status}: ${await res.text()}`);
++    }
++    return res.json();
++}
++
++function assertIsolation(listA: string, listB: string) {
++    if (!listA.includes('A のタスク')) throw new Error('A list missing A todo');
++    if (listA.includes('B のタスク')) throw new Error('A list leaked B todo');
++    if (!listB.includes('B のタスク')) throw new Error('B list missing B todo');
++    if (listB.includes('A のタスク')) throw new Error('B list leaked A todo');
++}
++
++async function main() {
++    console.log('Blocks API:', API);
++    console.log('User Pool:', outputs.auth.user_pool_id);
++    console.log('');
++
++    const tokenA = await idTokenFor(USER_A);
++    console.log('=== User A: create + list ===');
++    console.log(JSON.stringify(await rpc(tokenA, 'api.createTodo', ['A のタスク'])));
++    const listA = JSON.stringify(await rpc(tokenA, 'api.listTodos', []));
++    console.log(listA);
++
++    const tokenB = await idTokenFor(USER_B);
++    console.log('\n=== User B: create + list ===');
++    console.log(JSON.stringify(await rpc(tokenB, 'api.createTodo', ['B のタスク'])));
++    const listB = JSON.stringify(await rpc(tokenB, 'api.listTodos', []));
++    console.log(listB);
++
++    console.log('\n=== Isolation check ===');
++    assertIsolation(listA, listB);
++    console.log('OK — userId partition isolation verified');
++}
++
++main().catch((err) => {
++    console.error(err);
++    process.exit(1);
++});
+diff --git a/src/App.tsx b/src/App.tsx
+index 5b2b5a3..c91c15f 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,15 +1,17 @@
+-import { useCallback, useEffect, useState } from 'react';
++import { Authenticator } from '@aws-amplify/ui-react';
++import '@aws-amplify/ui-react/styles.css';
+ import { api } from 'aws-blocks';
++import { useCallback, useEffect, useState } from 'react';
+ import './App.css';
+ 
+ type Todo = {
+     todoId: string;
+-    content: string;
+-    createdAt: number;
++    title: string;
+ };
+ 
+-function App() {
++function TodoApp() {
+     const [todos, setTodos] = useState<Todo[]>([]);
++    const [newTitle, setNewTitle] = useState('');
+     const [error, setError] = useState<string | null>(null);
+ 
+     const load = useCallback(async () => {
+@@ -25,36 +27,48 @@ function App() {
+         load();
+     }, [load]);
+ 
+-    async function createTodo() {
+-        const content = window.prompt('Todo content');
+-        if (!content?.trim()) return;
++    async function addTodo() {
++        const title = newTitle.trim();
++        if (!title) return;
+         setError(null);
+         try {
+-            await api.createTodo(content.trim());
++            await api.createTodo(title);
++            setNewTitle('');
+             await load();
+         } catch (err) {
+-            setError(err instanceof Error ? err.message : 'Failed to create todo');
++            setError(err instanceof Error ? err.message : 'Failed to add todo');
+         }
+     }
+ 
+     return (
+         <main>
+-            <h1>My todos (AWS Blocks)</h1>
++            <h1>My todos (AWS Blocks + Cognito)</h1>
+             {error && <p role="alert">{error}</p>}
+-            <button type="button" onClick={createTodo}>
+-                + new
+-            </button>
++            <div>
++                <input
++                    value={newTitle}
++                    onChange={(e) => setNewTitle(e.target.value)}
++                    placeholder="New todo"
++                />
++                <button type="button" onClick={addTodo}>
++                    Add
++                </button>
++            </div>
+             <ul>
+                 {todos.map((todo) => (
+-                    <li key={todo.todoId}>{todo.content}</li>
++                    <li key={todo.todoId}>{todo.title}</li>
+                 ))}
+             </ul>
+-            <p>
+-                Chapter 1: minimal CRUD via <code>api.createTodo</code> /{' '}
+-                <code>api.listTodos</code> (no auth yet).
+-            </p>
+         </main>
+     );
+ }
+ 
++function App() {
++    return (
++        <Authenticator loginMechanisms={['email']}>
++            <TodoApp />
++        </Authenticator>
++    );
++}
++
+ export default App;
+diff --git a/src/main.tsx b/src/main.tsx
+index a1d3e96..e09e0bd 100644
+--- a/src/main.tsx
++++ b/src/main.tsx
+@@ -1,8 +1,12 @@
+ import React from 'react';
+ import ReactDOM from 'react-dom/client';
++import { Amplify } from 'aws-amplify';
++import outputs from '../amplify_outputs.json';
+ import App from './App.tsx';
+ import './index.css';
+ 
++Amplify.configure(outputs);
++
+ ReactDOM.createRoot(document.getElementById('root')!).render(
+     <React.StrictMode>
+         <App />

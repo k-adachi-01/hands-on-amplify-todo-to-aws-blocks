@@ -1,0 +1,413 @@
+diff --git a/aws-blocks/index.ts b/aws-blocks/index.ts
+index f0a12c5..67ac561 100644
+--- a/aws-blocks/index.ts
++++ b/aws-blocks/index.ts
+@@ -1,5 +1,6 @@
+ import { ApiNamespace, Scope } from '@aws-blocks/blocks';
+ import { DistributedTable } from '@aws-blocks/bb-distributed-table';
++import { Realtime } from '@aws-blocks/bb-realtime';
+ import { z } from 'zod';
+ import { CognitoVerifier } from './cognito-verifier.js';
+ 
+@@ -15,12 +16,30 @@ const todoSchema = z.object({
+     userId: z.string(),
+     todoId: z.string(),
+     title: z.string(),
++    completed: z.boolean(),
++    priority: z.number(),
++    version: z.number(),
+     createdAt: z.number(),
+ });
+ 
+ const todos = new DistributedTable(scope, 'todos', {
+     schema: todoSchema,
+     key: { partitionKey: 'userId', sortKey: 'todoId' },
++    indexes: {
++        byPriority: { partitionKey: 'userId', sortKey: 'priority' },
++        byTitle: { partitionKey: 'userId', sortKey: 'title' },
++    },
++});
++
++const realtime = new Realtime(scope, 'live', {
++    namespaces: {
++        todos: Realtime.namespace(
++            z.object({
++                action: z.enum(['created', 'updated', 'deleted']),
++                todoId: z.string(),
++            }),
++        ),
++    },
+ });
+ 
+ async function collectAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
+@@ -32,23 +51,57 @@ async function collectAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
+ }
+ 
+ export const api = new ApiNamespace(scope, 'api', (context) => ({
+-    async createTodo(title: string) {
++    async subscribeTodos() {
++        const user = await auth.requireAuth(context);
++        return realtime.getChannel('todos', user.sub);
++    },
++
++    async createTodo(title: string, priority = 2) {
+         const user = await auth.requireAuth(context);
+         const todoId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+         const todo = {
+             userId: user.sub,
+             todoId,
+             title,
++            completed: false,
++            priority,
++            version: 1,
+             createdAt: Date.now(),
+         };
+         await todos.put(todo);
++        await realtime.publish('todos', user.sub, { action: 'created', todoId });
+         return todo;
+     },
+ 
+-    async listTodos() {
++    async listTodos(sortBy?: 'priority' | 'title') {
+         const user = await auth.requireAuth(context);
++        if (sortBy) {
++            const index = sortBy === 'priority' ? 'byPriority' : 'byTitle';
++            return await collectAsync(
++                todos.query({ index, where: { userId: { equals: user.sub } } }),
++            );
++        }
+         return await collectAsync(
+             todos.query({ where: { userId: { equals: user.sub } } }),
+         );
+     },
++
++    async toggleTodo(todoId: string) {
++        const user = await auth.requireAuth(context);
++        const todo = await todos.get({ userId: user.sub, todoId });
++        if (!todo) throw new Error('Todo not found');
++        await todos.put(
++            { ...todo, completed: !todo.completed, version: todo.version + 1 },
++            { ifFieldEquals: { version: todo.version } },
++        );
++        await realtime.publish('todos', user.sub, { action: 'updated', todoId });
++        return { success: true };
++    },
++
++    async deleteTodo(todoId: string) {
++        const user = await auth.requireAuth(context);
++        await todos.delete({ userId: user.sub, todoId });
++        await realtime.publish('todos', user.sub, { action: 'deleted', todoId });
++        return { success: true };
++    },
+ }));
+diff --git a/aws-blocks/package.json b/aws-blocks/package.json
+index d7212e9..00113e1 100644
+--- a/aws-blocks/package.json
++++ b/aws-blocks/package.json
+@@ -1,21 +1,22 @@
+ {
+-    "name": "aws-blocks",
+-    "version": "0.0.0",
+-    "private": true,
+-    "type": "module",
+-    "exports": {
+-        ".": {
+-            "types": "./index.ts",
+-            "browser": "./client.js",
+-            "react-server": "./client.js",
+-            "import": "./client.js",
+-            "default": "./index.ts"
+-        }
+-    },
+-    "dependencies": {
+-        "@aws-blocks/blocks": "*",
+-        "@aws-blocks/bb-distributed-table": "*",
+-        "aws-jwt-verify": "^5.0.0",
+-        "zod": "^4.3.0"
++  "name": "aws-blocks",
++  "version": "0.0.0",
++  "private": true,
++  "type": "module",
++  "exports": {
++    ".": {
++      "types": "./index.ts",
++      "browser": "./client.js",
++      "react-server": "./client.js",
++      "import": "./client.js",
++      "default": "./index.ts"
+     }
++  },
++  "dependencies": {
++    "@aws-blocks/blocks": "*",
++    "@aws-blocks/bb-distributed-table": "*",
++    "@aws-blocks/bb-realtime": "*",
++    "aws-jwt-verify": "^5.0.0",
++    "zod": "^4.3.0"
++  }
+ }
+diff --git a/docs/chapters/04-chapter3-advanced/snapshots/App.tsx b/docs/chapters/04-chapter3-advanced/snapshots/App.tsx
+new file mode 100644
+index 0000000..5de87aa
+--- /dev/null
++++ b/docs/chapters/04-chapter3-advanced/snapshots/App.tsx
+@@ -0,0 +1,138 @@
++import { Authenticator } from '@aws-amplify/ui-react';
++import '@aws-amplify/ui-react/styles.css';
++import { api } from 'aws-blocks';
++import { useCallback, useEffect, useState } from 'react';
++import './App.css';
++
++type Todo = {
++    todoId: string;
++    title: string;
++    completed: boolean;
++    priority: number;
++    version: number;
++};
++
++type SortBy = 'priority' | 'title' | undefined;
++
++function TodoApp() {
++    const [todos, setTodos] = useState<Todo[]>([]);
++    const [newTitle, setNewTitle] = useState('');
++    const [sortBy, setSortBy] = useState<SortBy>(undefined);
++    const [error, setError] = useState<string | null>(null);
++
++    const load = useCallback(async () => {
++        setError(null);
++        try {
++            setTodos(await api.listTodos(sortBy));
++        } catch (err) {
++            setError(err instanceof Error ? err.message : 'Failed to load todos');
++        }
++    }, [sortBy]);
++
++    useEffect(() => {
++        load();
++    }, [load]);
++
++    useEffect(() => {
++        let sub: { unsubscribe: () => void } | undefined;
++        (async () => {
++            try {
++                const channel = await api.subscribeTodos();
++                sub = channel.subscribe(() => load());
++            } catch {
++                // Realtime requires sandbox wiring in some setups
++            }
++        })();
++        return () => sub?.unsubscribe();
++    }, [load]);
++
++    async function addTodo() {
++        const title = newTitle.trim();
++        if (!title) return;
++        setError(null);
++        try {
++            await api.createTodo(title, 2);
++            setNewTitle('');
++            await load();
++        } catch (err) {
++            setError(err instanceof Error ? err.message : 'Failed to add todo');
++        }
++    }
++
++    async function toggle(todoId: string) {
++        setError(null);
++        try {
++            await api.toggleTodo(todoId);
++            await load();
++        } catch (err) {
++            setError(err instanceof Error ? err.message : 'Failed to toggle');
++        }
++    }
++
++    async function remove(todoId: string) {
++        setError(null);
++        try {
++            await api.deleteTodo(todoId);
++            await load();
++        } catch (err) {
++            setError(err instanceof Error ? err.message : 'Failed to delete');
++        }
++    }
++
++    return (
++        <main>
++            <h1>My todos (AWS Blocks + Cognito)</h1>
++            {error && <p role="alert">{error}</p>}
++            <div>
++                <input
++                    value={newTitle}
++                    onChange={(e) => setNewTitle(e.target.value)}
++                    placeholder="New todo"
++                />
++                <button type="button" onClick={addTodo}>
++                    Add
++                </button>
++            </div>
++            <label>
++                Sort{' '}
++                <select
++                    value={sortBy ?? ''}
++                    onChange={(e) =>
++                        setSortBy((e.target.value || undefined) as SortBy)
++                    }
++                >
++                    <option value="">Default</option>
++                    <option value="priority">Priority</option>
++                    <option value="title">Title</option>
++                </select>
++            </label>
++            <ul>
++                {todos.map((todo) => (
++                    <li key={todo.todoId}>
++                        <label>
++                            <input
++                                type="checkbox"
++                                checked={todo.completed}
++                                onChange={() => toggle(todo.todoId)}
++                            />
++                            {todo.title}
++                        </label>
++                        <button type="button" onClick={() => remove(todo.todoId)}>
++                            Delete
++                        </button>
++                    </li>
++                ))}
++            </ul>
++        </main>
++    );
++}
++
++function App() {
++    return (
++        <Authenticator loginMechanisms={['email']}>
++            <TodoApp />
++        </Authenticator>
++    );
++}
++
++export default App;
+diff --git a/src/App.tsx b/src/App.tsx
+index c91c15f..5de87aa 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -7,32 +7,51 @@ import './App.css';
+ type Todo = {
+     todoId: string;
+     title: string;
++    completed: boolean;
++    priority: number;
++    version: number;
+ };
+ 
++type SortBy = 'priority' | 'title' | undefined;
++
+ function TodoApp() {
+     const [todos, setTodos] = useState<Todo[]>([]);
+     const [newTitle, setNewTitle] = useState('');
++    const [sortBy, setSortBy] = useState<SortBy>(undefined);
+     const [error, setError] = useState<string | null>(null);
+ 
+     const load = useCallback(async () => {
+         setError(null);
+         try {
+-            setTodos(await api.listTodos());
++            setTodos(await api.listTodos(sortBy));
+         } catch (err) {
+             setError(err instanceof Error ? err.message : 'Failed to load todos');
+         }
+-    }, []);
++    }, [sortBy]);
+ 
+     useEffect(() => {
+         load();
+     }, [load]);
+ 
++    useEffect(() => {
++        let sub: { unsubscribe: () => void } | undefined;
++        (async () => {
++            try {
++                const channel = await api.subscribeTodos();
++                sub = channel.subscribe(() => load());
++            } catch {
++                // Realtime requires sandbox wiring in some setups
++            }
++        })();
++        return () => sub?.unsubscribe();
++    }, [load]);
++
+     async function addTodo() {
+         const title = newTitle.trim();
+         if (!title) return;
+         setError(null);
+         try {
+-            await api.createTodo(title);
++            await api.createTodo(title, 2);
+             setNewTitle('');
+             await load();
+         } catch (err) {
+@@ -40,6 +59,26 @@ function TodoApp() {
+         }
+     }
+ 
++    async function toggle(todoId: string) {
++        setError(null);
++        try {
++            await api.toggleTodo(todoId);
++            await load();
++        } catch (err) {
++            setError(err instanceof Error ? err.message : 'Failed to toggle');
++        }
++    }
++
++    async function remove(todoId: string) {
++        setError(null);
++        try {
++            await api.deleteTodo(todoId);
++            await load();
++        } catch (err) {
++            setError(err instanceof Error ? err.message : 'Failed to delete');
++        }
++    }
++
+     return (
+         <main>
+             <h1>My todos (AWS Blocks + Cognito)</h1>
+@@ -54,9 +93,34 @@ function TodoApp() {
+                     Add
+                 </button>
+             </div>
++            <label>
++                Sort{' '}
++                <select
++                    value={sortBy ?? ''}
++                    onChange={(e) =>
++                        setSortBy((e.target.value || undefined) as SortBy)
++                    }
++                >
++                    <option value="">Default</option>
++                    <option value="priority">Priority</option>
++                    <option value="title">Title</option>
++                </select>
++            </label>
+             <ul>
+                 {todos.map((todo) => (
+-                    <li key={todo.todoId}>{todo.title}</li>
++                    <li key={todo.todoId}>
++                        <label>
++                            <input
++                                type="checkbox"
++                                checked={todo.completed}
++                                onChange={() => toggle(todo.todoId)}
++                            />
++                            {todo.title}
++                        </label>
++                        <button type="button" onClick={() => remove(todo.todoId)}>
++                            Delete
++                        </button>
++                    </li>
+                 ))}
+             </ul>
+         </main>

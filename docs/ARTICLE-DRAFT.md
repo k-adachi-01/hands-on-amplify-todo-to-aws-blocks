@@ -13,6 +13,8 @@
 | **AWS アカウント** | Phase 0 から必要（Amplify Sandbox で Cognito 等を provision） |
 | **環境** | [Nix](https://nixos.org/download/) dev shell 推奨（Node.js **20.20+** / npm **10.8+**。Nix 利用時は v22 に固定） |
 
+> **Node バージョン:** `package.json` の `engines` は `>= 20.20.0`。Nix 未使用の場合も **20.20 以上**（22 推奨）を用意してください。
+
 ### 始める前のチェックリスト
 
 - [ ] **Node.js 20.20+** と **npm 10.8+**（`nix develop` 後に `node -v` / `npm -v` で確認）
@@ -39,21 +41,35 @@
 
 **clone 直後の `main` ブランチは第3章まで完了したコードです。** 第1章「ログイン不要で Todo 追加」は **HEAD では再現しません**（`requireAuth` 入りの完成形になっているため）。
 
-各章の冒頭で **必ず tag に checkout** してから編集してください。
+各章の冒頭で **必ず tag から作業ブランチを作って** から編集してください（タグに直接 checkout すると **detached HEAD** になり、コミットがブランチに紐づかず見失いやすいです）。
 
 ```
 phase-0-amplify-baseline     … Amplify のみ（Before）
 phase-1-blocks-scaffold      … create-blocks-app 直後（第1章の起点）
 chapter-1-minimal-crud       … 認証なし CRUD 完了
-chapter-2-cognito-auth       … Cognito + ユーザー分離完了
-chapter-3-advanced           … Realtime 等（発展編）
+chapter-2-cognito-auth       … Cognito + ユーザー分離完了（Realtime 等はまだ無し）
+chapter-3-advanced           … Realtime / toggle / delete / sort（発展編）
 ```
+
+### Phase / 章 / ディレクトリ / tag の対応
+
+ディレクトリ番号（`00`〜`04`）と章番号（第1〜3章）は **+1 ずれ** ています。パスを開くときは次の表で読み替えてください。
+
+| 段階 | 章（記事） | ディレクトリ（`docs/chapters/`） | git tag |
+| --- | --- | --- | --- |
+| Phase 0 | — | `00-clone-and-amplify-baseline` | `phase-0-amplify-baseline` |
+| Phase 1 | — | `01-blocks-scaffold` | `phase-1-blocks-scaffold` |
+| — | 第1章 | `02-chapter1-minimal-crud` | `chapter-1-minimal-crud` |
+| — | 第2章 | `03-chapter2-cognito-auth` | `chapter-2-cognito-auth` |
+| — | 第3章 | `04-chapter3-advanced` | `chapter-3-advanced` |
 
 | 章 | 開始時に実行 | 編集後の確認用 tag |
 | --- | --- | --- |
-| 第1章 | `git checkout phase-1-blocks-scaffold` | `git diff chapter-1-minimal-crud` |
-| 第2章 | `git checkout chapter-1-minimal-crud` | `git diff chapter-2-cognito-auth` |
-| 第3章 | `git checkout chapter-2-cognito-auth` | `git diff chapter-3-advanced` |
+| 第1章 | `git switch -c work/chapter1 phase-1-blocks-scaffold` | `git diff chapter-1-minimal-crud` |
+| 第2章 | `git switch -c work/chapter2 chapter-1-minimal-crud` | `git diff chapter-2-cognito-auth` |
+| 第3章 | `git switch -c work/chapter3 chapter-2-cognito-auth` | `git diff chapter-3-advanced` |
+
+`git switch -c <作業ブランチ名> <tag>` でタグの内容をブランチに載せてから編集します。既に detached HEAD の場合も同様にブランチを切ってください。
 
 完成形と見比べる: `git diff <tag>` または [`docs/chapters/`](chapters/) の `snapshots/` を参照。
 
@@ -100,6 +116,8 @@ Amplify を捨てる記事ではなく、**Amplify の Sandbox / UI を活かし
 
 本記事は **Phase 0 で Sandbox を立てたまま** 第1章に進みます。第1章のコードは認証なしですが、**`client.js` が Sandbox の API Gateway を向くため、データは AWS 上に保存されます**（ローカル `.bb-data/` ではありません）。
 
+**Sandbox の watch:** `npm run sandbox` はファイル変更を監視します。`aws-blocks/index.ts` を編集したり、章用 tag に `git switch` したりすると、Lambda が**自動で再デプロイ**されます。`[Sandbox] Watching for file changes...` のあと `✔ Deployment completed` が出るまで待ってからブラウザを再読込してください。章を切り替えるときは、再デプロイ完了を待つか、一度 Sandbox を止めてから checkout → 再起動すると安全です。
+
 第1章を **完全にオフライン** で試す場合: Sandbox を止め、`amplify_outputs.json` を一時的にリネームしてから `npm run dev` してください（上級者向け。本記事の推奨手順ではありません）。
 
 ---
@@ -113,6 +131,8 @@ nix develop          # 初回は数分かかることがあります
 npm install          # 数分かかることがあります。エラーなら「プレビュー版の前提」を参照
 ```
 
+Nix を初めて使う場合、`nix develop` の前に flakes を有効化してください（`~/.config/nix/nix.conf` に `experimental-features = nix-command flakes`）。[Determinate Installer](https://docs.determinate.systems/determinate-nix/) でも可。
+
 ```bash
 node -v    # v22.x（Nix）または 20.20+
 npm -v     # 10.8+
@@ -122,7 +142,7 @@ npm -v     # 10.8+
 
 ## AWS へのログイン
 
-Amplify Sandbox は AWS にリソースを作るため、先に CLI 認証を通します。
+Amplify Sandbox は AWS にリソースを作るため、先に CLI 認証を通します。**要は `aws sts get-caller-identity` が通ること**です。
 
 ### 推奨: `aws login`（CLI 2.32.0+）
 
@@ -240,7 +260,7 @@ npm run dev
 npx @aws-blocks/create-blocks-app@latest . --yes
 ```
 
-確認: `git checkout phase-1-blocks-scaffold` で scaffold 直後の状態を見られます。
+確認: `git switch -c work/phase1 phase-1-blocks-scaffold` で scaffold 直後の状態を見られます。
 
 ---
 
@@ -251,7 +271,7 @@ npx @aws-blocks/create-blocks-app@latest . --yes
 ### 1-1. 起点に戻る
 
 ```bash
-git checkout phase-1-blocks-scaffold
+git switch -c work/chapter1 phase-1-blocks-scaffold
 ```
 
 ### 1-2. `aws-blocks/index.ts` を書き換える
@@ -326,16 +346,16 @@ npm run dev
 ### 2-1. 起点に戻る
 
 ```bash
-git checkout chapter-1-minimal-crud
+git switch -c work/chapter2 chapter-1-minimal-crud
 ```
 
 ### 2-2. `aws-blocks/index.ts` を書き換える
 
-[`docs/chapters/03-chapter2-cognito-auth/snapshots/index.ts`](chapters/03-chapter2-cognito-auth/snapshots/index.ts) を **`aws-blocks/index.ts` にコピー**（第3章の toggle/delete はまだ無くてよい。第2章 tag の内容に合わせる）。
+[`docs/chapters/03-chapter2-cognito-auth/snapshots/index.ts`](chapters/03-chapter2-cognito-auth/snapshots/index.ts) を **`aws-blocks/index.ts` にコピー**（第3章の toggle/delete / Realtime / sort はまだ無くてよい。第2章 tag の内容に合わせる）。
 
 追加される要点:
 
-- `CognitoVerifier` + `auth.requireAuth(context)`
+- `CognitoVerifier` + `auth.requireAuth(context)` — 実装は同梱の [`aws-blocks/cognito-verifier.ts`](../../aws-blocks/cognito-verifier.ts)（JWT 検証ヘルパー。**新規作成不要**）。`import ... from './cognito-verifier.js'` の `.js` 拡張子は Node ESM の解決ルールによるもの
 - `userId: user.sub` を partition key に
 
 ### 2-3. 環境変数 `COGNITO_*` について（手で設定しない）
@@ -373,6 +393,8 @@ npm run verify:chapter2
 
 ![user-b](chapters/03-chapter2-cognito-auth/screenshots/03-user-b-todos.png)
 
+スクリーンショット（`01`〜`03`）はリポジトリに同梱済み。**再取得は任意**（`npm run capture:screenshots` を使う場合は初回に `npx playwright install chromium` が必要）
+
 完成形との diff: `git diff chapter-2-cognito-auth`
 
 ---
@@ -380,8 +402,9 @@ npm run verify:chapter2
 ## 発展編: 第3章
 
 ```bash
-git checkout chapter-2-cognito-auth
+git switch -c work/chapter3 chapter-2-cognito-auth
 # docs/chapters/04-chapter3-advanced/snapshots/index.ts 等を参照して追記
+# または diffs/from-chapter-2.patch を適用
 npm run verify:chapter3
 ```
 
@@ -396,7 +419,7 @@ npm run verify:chapter3
 | `npm install` で `@aws-blocks/*` が見つからない | プレビュー公開状況を確認。ここでハンズオンは止まる |
 | Sandbox 認証エラー | `aws login` → `aws sts get-caller-identity` |
 | `npm run dev` が `amplify_outputs.json` で落ちる | ターミナル A の Sandbox が完了しているか確認。0-2 の `File written` を待つ |
-| 第1章なのにログインを求められる | `git checkout phase-1-blocks-scaffold` からやり直しているか確認（HEAD は第2章以降のコード） |
+| 第1章なのにログインを求められる | `git switch -c work/chapter1 phase-1-blocks-scaffold` からやり直しているか確認（HEAD は第2章以降のコード） |
 | UI サインアップで止まる | `example.com` は不可。実メールか `ensure-chapter2-users.sh` |
 | `client.js` を編集した | 上書きされる。`npm run blocks:generate-client` |
 
@@ -411,7 +434,7 @@ npm run verify:chapter3
 
 ## まとめ
 
-1. **git tag で章ごとに checkout** してから編集する（HEAD は完成形）。
+1. **git tag から作業ブランチを切って** 章ごとに編集する（HEAD は完成形）。
 2. **保存先は章と Sandbox の有無で変わる**（第1章単体は `.bb-data/`、本記事の Phase 0 後は DynamoDB）。
 3. **認可** — Amplify はモデルルール、Blocks は API 内 `requireAuth` + `userId`。
 4. **Cognito env** — `amplify_outputs.json` 経由で自動注入。手設定不要。

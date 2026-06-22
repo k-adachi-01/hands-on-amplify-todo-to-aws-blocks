@@ -14,7 +14,7 @@
 
 ## 前提
 
-- [Nix](https://nixos.org/download/)（推奨）— 無い場合は Node.js 22+ / npm 10+
+- [Nix](https://nixos.org/download/)（推奨）— 無い場合は Node.js **20.20+** / npm 10.8+
 - **AWS CLI 2.32.0+** と `aws login`（[手順](docs/ARTICLE-DRAFT.md#aws-へのログインaws-login)）
 - AWS アカウント（Phase 0 の Amplify Sandbox 以降）
 
