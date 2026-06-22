@@ -106,7 +106,7 @@ npm run dev
 - [x] `npm run dev` で http://localhost:3000 表示
 - [x] Authenticator（Sign In / Create Account）表示
 - [x] ユーザー A/B で Todo 分離（`npm run verify:chapter2` — 第2章）
-- [ ] UI スクショ（`02-user-a-todos.png` / `03-user-b-todos.png`）— 任意
+- [x] UI スクショ（`02-user-a-todos.png` / `03-user-b-todos.png`）
 - [ ] Amplify 純粋 Todo UI（`dev:amplify` + tag `phase-0` 時点のコード）— 記事用 Before は snapshots 参照
 
 ## 手順 0-7: 片付け（任意）

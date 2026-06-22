@@ -71,8 +71,8 @@ bash scripts/ensure-chapter2-users.sh
 3. 右上 **Sign out**
 4. `user-b@example.com` でログイン → `B のタスク` を追加
 5. 各ユーザーで一覧が **自分の Todo のみ** であることを確認
-6. スクリーンショット保存:
-    - [`screenshots/02-user-a-todos.png`](screenshots/02-user-a-todos.png)
+6. スクリーンショット（Playwright 自動取得可）:
+    - [`screenshots/02-user-a-todos.png`](screenshots/02-user-a-todos.png) — `npx tsx scripts/capture-chapter2-screenshots.ts`
     - [`screenshots/03-user-b-todos.png`](screenshots/03-user-b-todos.png)
 
 ## 手順 2-3: API スモーク（自動）
