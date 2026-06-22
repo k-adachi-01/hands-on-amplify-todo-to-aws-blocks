@@ -26,11 +26,13 @@
 
 | 章 | ディレクトリ | 状態 |
 | --- | --- | --- |
-| Phase 0 | [chapters/00-clone-and-amplify-baseline](chapters/00-clone-and-amplify-baseline/) | |
-| Phase 1 | [chapters/01-blocks-scaffold](chapters/01-blocks-scaffold/) | |
-| 第1章 | [chapters/02-chapter1-minimal-crud](chapters/02-chapter1-minimal-crud/) | |
-| 第2章 | [chapters/03-chapter2-cognito-auth](chapters/03-chapter2-cognito-auth/) | |
-| 第3章 | [chapters/04-chapter3-advanced](chapters/04-chapter3-advanced/) | 任意 |
+| Phase 0 | [chapters/00-clone-and-amplify-baseline](chapters/00-clone-and-amplify-baseline/) | 手順・ログ済（Sandbox は AWS 要） |
+| Phase 1 | [chapters/01-blocks-scaffold](chapters/01-blocks-scaffold/) | 完了 |
+| 第1章 | [chapters/02-chapter1-minimal-crud](chapters/02-chapter1-minimal-crud/) | 完了・API 検証済 |
+| 第2章 | [chapters/03-chapter2-cognito-auth](chapters/03-chapter2-cognito-auth/) | コード完了（検証要 Sandbox） |
+| 第3章 | [chapters/04-chapter3-advanced](chapters/04-chapter3-advanced/) | 完了 |
+
+記事初稿: [ARTICLE-DRAFT.md](ARTICLE-DRAFT.md)
 
 ## 公開時の注意
 
