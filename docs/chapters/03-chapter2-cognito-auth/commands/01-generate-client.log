@@ -1,0 +1,9 @@
+warning: Git tree '/Users/adachi/src/260618_aws-blocks/hands-on-walkthrough' has uncommitted changes
+hands-on-walkthrough dev shell (Node v22.22.3, npm 10.9.8)
+Loaded .env.local (AWS_PROFILE=aws-poc-sandbox)
+
+> amplify-vite-react-template@0.0.0 blocks:generate-client
+> cross-env NODE_OPTIONS="--conditions=aws-runtime" tsx aws-blocks/scripts/generate-client.ts
+
+[Realtime] BLOCKS_RT_WS_URL not set — getChannel() will return incomplete descriptors
+✅ Generated /Users/adachi/src/260618_aws-blocks/hands-on-walkthrough/aws-blocks/client.js

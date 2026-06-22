@@ -22,6 +22,14 @@
                         echo "hands-on-walkthrough dev shell (Node $(node -v), npm $(npm -v))"
                         export npm_config_cache="$PWD/.npm-cache"
                         mkdir -p "$npm_config_cache"
+                        if [ -f .env.local ]; then
+                          set -a
+                          source .env.local
+                          set +a
+                          echo "Loaded .env.local (AWS_PROFILE=''${AWS_PROFILE:-unset})"
+                        else
+                          echo "Tip: cp .env.local.example .env.local and set AWS_PROFILE for sandbox"
+                        fi
                     '';
                 };
             });

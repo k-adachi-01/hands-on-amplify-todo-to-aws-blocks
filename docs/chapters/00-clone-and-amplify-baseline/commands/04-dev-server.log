@@ -1,0 +1,23 @@
+=== Blocks dev server 起動ログ（2026-06-23）===
+実行環境: nix develop + .env.local
+コマンド: npm run dev
+前提: ターミナル A で npm run sandbox が稼働中（または完了済みで amplify_outputs.json 存在）
+
+> tsx watch aws-blocks/scripts/server.ts
+
+Loading backend...
+Deploying local resources...
+  🔌 Attaching dev server (from @aws-blocks/bb-realtime/ws-server)
+📝 Generating client code...
+AWS Blocks local server running on http://localhost:3000
+
+  ➜  http://localhost:3000/
+
+ハイブリッド構成:
+- Cognito: Sandbox が provision した User Pool（amplify_outputs.json）
+- Blocks API: ローカル dev server（/aws-blocks/api）が mock を提供
+- 本番相当の Blocks Lambda を試す場合は BLOCKS_API_URL を設定して dev server を sandbox モードで起動
+
+ブラウザ確認:
+- http://localhost:3000/ → Amplify Authenticator（Sign In / Create Account）
+- スクリーンショット: ../03-chapter2-cognito-auth/screenshots/01-authenticator-signin.png

@@ -25,12 +25,25 @@ node -v   # v22.x
 git clone https://github.com/aws-samples/amplify-vite-react-template.git
 # 本リポジトリはテンプレート + Nix + docs を統合済み
 nix develop && npm install
+
+# AWS SSO（Sandbox 用プロファイル）
+aws sso login --profile aws-poc-sandbox
+cp .env.local.example .env.local
 ```
 
-**ターミナル A:** `npx ampx sandbox`  
-**ターミナル B:** `npm run dev:amplify`
+**ターミナル A:** `npm run sandbox`（`scripts/run-sandbox.sh` が `--profile` を付与）  
+**ターミナル B:** `npm run dev`（Blocks dev + Vite @ http://localhost:3000）
 
-詳細: [docs/chapters/00-clone-and-amplify-baseline/README.md](chapters/00-clone-and-amplify-baseline/README.md)
+2026-06-23 実行例（`ap-northeast-1`）:
+
+- デプロイ約 271 秒 → `amplify_outputs.json` 生成
+- AppSync: `https://…appsync-api.ap-northeast-1.amazonaws.com/graphql`
+- Blocks API: `custom.blocks_api_url`（API Gateway）
+- UI: Authenticator（Sign In / Create Account）表示確認済み
+
+**ハイブリッド dev:** Cognito は Sandbox の User Pool。ブラウザからの Blocks RPC は `client.js` 経由で Sandbox Lambda を呼び、Amplify セッションの ID トークンを Bearer 付与する。
+
+詳細・ログ: [docs/chapters/00-clone-and-amplify-baseline/README.md](chapters/00-clone-and-amplify-baseline/README.md)
 
 ### Before の要点
 
@@ -64,6 +77,11 @@ npm run verify:chapter1  # API スモーク（:3002 API-only 時）
 
 ```bash
 npm run sandbox && npm run dev
+
+# API 分離スモーク（Cognito テストユーザー作成 + JWT + RPC）
+npm run verify:chapter2
+
+# UI 確認: user-a / user-b で Sign In → Todo 追加 → 一覧が分離していること
 ```
 
 詳細: [docs/chapters/03-chapter2-cognito-auth/README.md](chapters/03-chapter2-cognito-auth/README.md)

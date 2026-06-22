@@ -11,6 +11,7 @@ dist-ssr/
 .amplify/
 amplify_outputs.json
 amplify_outputs*.json
+!docs/**/snapshots/amplify_outputs.masked.example.json
 amplifyconfiguration.json
 amplifyconfiguration*.json
 

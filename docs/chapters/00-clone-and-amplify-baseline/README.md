@@ -1,115 +1,120 @@
 # Phase 0 — クローンと Amplify ベースライン
 
-構成案: Phase 0 / 記事セクション 1.5
+構成案: Phase 0 / 記事セクション 1.5  
+**ステータス: Sandbox デプロイ完了（2026-06-23）**
 
 ## 目的
 
-公式 [amplify-vite-react-template](https://github.com/aws-samples/amplify-vite-react-template) の Todo アプリを、改変前の状態で動かし「Before」を記録する。
+公式 [amplify-vite-react-template](https://github.com/aws-samples/amplify-vite-react-template) を起点に、Amplify backend（Cognito + AppSync + Blocks Lambda）を Sandbox に載せる。
 
 ## メタ情報
 
 | 項目 | 値 |
 | --- | --- |
 | 上流テンプレート commit | `a7f2a70036f8d5007fcd510317e38d4540a5bc2f` |
-| 本リポジトリ初期 commit | `6b48c4a`（テンプレート + Nix + docs 統合） |
 | 実行日 | 2026-06-23 |
-| Nix Node | v22.22.3 / npm 10.9.8（`nix develop` 内） |
+| Nix Node | v22.22.3 / npm 10.9.8 |
+| AWS Profile | `aws-poc-sandbox`（`.env.local`） |
+| AWS Account | `155936382172` |
+| Sandbox Region | `ap-northeast-1` |
+| Sandbox Identifier | `adachi` |
+| CloudFormation Stack | `amplify-amplifyvitereacttemplate-adachi-sandbox-a14ca47146` |
+| デプロイ所要時間 | 約 271 秒 |
 
 ## 手順 0-1: リポジトリ準備（完了）
 
-本リポジトリは次の手順で初期化済みである。
-
 ```bash
-# 公開用リポジトリとして独立管理（親ワークスペースとは別 git）
-git clone https://github.com/aws-samples/amplify-vite-react-template.git hands-on-walkthrough
-cd hands-on-walkthrough
-
-# Nix dev shell（ホストに Node/npm を入れない）
 nix develop
-
-# 依存関係
 npm install
 ```
 
 ログ: [`commands/01-npm-install.log`](commands/01-npm-install.log)
 
-## 手順 0-2: コード確認（Before）
+## 手順 0-2: Before コード（snapshots）
 
-### データモデル — `amplify/data/resource.ts`
+Amplify 単体時代の Todo 定義・フロント呼び出し。
 
-- `Todo` は `content` のみ
-- `authorization: allow.publicApiKey()` — **誰でも CRUD 可能**
-- Auth 定義（`amplify/auth/resource.ts`）とは未接続
+| ファイル | 内容 |
+| --- | --- |
+| [`snapshots/resource.ts`](snapshots/resource.ts) | `publicApiKey()` の Todo モデル |
+| [`snapshots/App.tsx`](snapshots/App.tsx) | `client.models.Todo.*` |
 
-スナップショット: [`snapshots/resource.ts`](snapshots/resource.ts)（`amplify/data/resource.ts`）
-
-### フロント — `src/App.tsx`
-
-```typescript
-client.models.Todo.create({ content });
-client.models.Todo.observeQuery().subscribe(...);
-```
-
-スナップショット: [`snapshots/App.tsx`](snapshots/App.tsx)
-
-## 手順 0-3: Amplify Sandbox + Vite（要 AWS 認証）
-
-**2 ターミナル**で実行する。いずれも `nix develop` 内。
-
-### ターミナル A — Sandbox
+## 手順 0-3: AWS SSO + `.env.local`
 
 ```bash
-cd hands-on-walkthrough
-nix develop
-npx ampx sandbox
+aws sso login --profile aws-poc-sandbox
+AWS_PROFILE=aws-poc-sandbox aws sts get-caller-identity
+
+cp .env.local.example .env.local
+exit && nix develop   # Loaded .env.local (AWS_PROFILE=aws-poc-sandbox)
 ```
 
-成功すると `amplify_outputs.json` が生成される（**gitignore 済み — コミットしない**）。
+**トラブル:** `flake.nix` の `${AWS_PROFILE:-unset}` は Nix 式と解釈される → `''${AWS_PROFILE:-unset}` にエスケープ済み。
 
-資料用には API Key 等をマスクした版のみ `snapshots/amplify_outputs.masked.json` に保存する。
+失敗ログ（プロファイル未指定）: [`commands/02-ampx-sandbox-attempt.log`](commands/02-ampx-sandbox-attempt.log)
 
-### ターミナル B — フロント
+## 手順 0-4: ターミナル A — Sandbox（完了）
 
 ```bash
-cd hands-on-walkthrough
-nix develop
+npm run sandbox   # 内部: scripts/run-sandbox.sh → ampx sandbox --profile $AWS_PROFILE
+```
+
+成功ログ: [`commands/03-sandbox-success.log`](commands/03-sandbox-success.log)
+
+生成物（ローカルのみ、gitignore）:
+
+- `amplify_outputs.json`
+- `.amplify/` 配下の CDK artifacts
+
+資料用マスク版: [`snapshots/amplify_outputs.masked.example.json`](snapshots/amplify_outputs.masked.example.json)（`amplify_outputs*.json` は gitignore のため `.example.json` 命名）
+
+| 出力キー | 用途 |
+| --- | --- |
+| `auth.user_pool_id` | Cognito（Authenticator） |
+| `data.url` | AppSync GraphQL（Amplify Data / 旧 Todo） |
+| `custom.blocks_api_url` | Blocks API Gateway エンドポイント |
+
+**Sandbox は watch モード** — ターミナル A は起動したままにする。
+
+## 手順 0-5: ターミナル B — Blocks dev + UI（完了）
+
+```bash
 npm run dev
 ```
 
-ブラウザで http://localhost:5173（または Vite 表示ポート）を開く。
+ログ: [`commands/04-dev-server.log`](commands/04-dev-server.log)
 
-### 確認項目
+| 項目 | 値 |
+| --- | --- |
+| URL | http://localhost:3000/ |
+| Blocks RPC | http://localhost:3000/aws-blocks/api |
+| Realtime WS | `bb-realtime` dev attachment |
 
-- [ ] 初回画面が表示される → `screenshots/01-initial.png`
-- [ ] 「+ new」で Todo 作成 → `screenshots/02-after-create.png`
-- [ ] 一覧が `observeQuery` で更新される
+### ハイブリッド構成（記事用メモ）
 
-### 実行環境メモ
+| コンポーネント | 実行場所 |
+| --- | --- |
+| Cognito 認証 UI | Sandbox provision の User Pool |
+| Blocks API（開発中） | ローカル dev server の mock |
+| Blocks Lambda（本番相当） | `custom.blocks_api_url`（Sandbox 上） |
 
-自動実行環境では AWS 認証情報が未設定のため、Sandbox 起動ログのみ [`commands/02-ampx-sandbox-attempt.log`](commands/02-ampx-sandbox-attempt.log) に記録した。**読者環境では上記手順で Sandbox を完了すること。**
+サインイン画面スクリーンショット: [`screenshots/02-post-sandbox-authenticator.png`](screenshots/02-post-sandbox-authenticator.png)
+
+## 手順 0-6: 確認チェックリスト
+
+- [x] Sandbox デプロイ成功（`amplify_outputs.json` 生成）
+- [x] `npm run dev` で http://localhost:3000 表示
+- [x] Authenticator（Sign In / Create Account）表示
+- [x] ユーザー A/B で Todo 分離（`npm run verify:chapter2` — 第2章）
+- [ ] UI スクショ（`02-user-a-todos.png` / `03-user-b-todos.png`）— 任意
+- [ ] Amplify 純粋 Todo UI（`dev:amplify` + tag `phase-0` 時点のコード）— 記事用 Before は snapshots 参照
+
+## 手順 0-7: 片付け（任意）
 
 ```bash
-aws sts get-caller-identity   # 認証確認
-aws configure list
+npm run sandbox:delete
 ```
-
-## 手順 0-4: Sandbox 片付け（任意）
-
-```bash
-nix develop
-npx ampx sandbox delete --yes
-```
-
-## 学び
-
-- Amplify Gen 2 は `defineData` でモデルを宣言すると CRUD + subscription が自動生成される
-- quickstart の Todo は `publicApiKey()` のため、バックエンドの認可設計を学びにくい
-- ローカル Vite だけでは GraphQL API は動かず、Sandbox またはデプロイが必要
 
 ## git tag
 
-```bash
-git tag -a phase-0-amplify-baseline -m "Amplify template baseline before Blocks integration"
-```
-
-コード状態は Blocks 統合前。Sandbox 完了後にスクリーンショットを追加し、必要なら tag を annotated message で更新してよい。
+`phase-0-amplify-baseline` — Blocks 統合前のコード。Sandbox 実行記録は本 README と `commands/` に追記済み。

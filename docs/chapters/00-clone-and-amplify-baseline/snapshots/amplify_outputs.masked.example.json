@@ -1,0 +1,28 @@
+{
+    "version": "1.4",
+    "auth": {
+        "user_pool_id": "ap-northeast-1_***",
+        "aws_region": "ap-northeast-1",
+        "user_pool_client_id": "***REDACTED***",
+        "identity_pool_id": "ap-northeast-1:***REDACTED***",
+        "username_attributes": ["email"],
+        "standard_required_attributes": ["email"],
+        "user_verification_types": ["email"],
+        "password_policy": {
+            "min_length": 8,
+            "require_lowercase": true,
+            "require_numbers": true,
+            "require_symbols": true,
+            "require_uppercase": true
+        }
+    },
+    "data": {
+        "url": "https://nibwniwxsndy3giyjpyjxdg6nm.appsync-api.ap-northeast-1.amazonaws.com/graphql",
+        "aws_region": "ap-northeast-1",
+        "api_key": "***REDACTED***",
+        "default_authorization_type": "API_KEY"
+    },
+    "custom": {
+        "blocks_api_url": "https://mkg0bxtrk7.execute-api.ap-northeast-1.amazonaws.com/prod/aws-blocks/api"
+    }
+}

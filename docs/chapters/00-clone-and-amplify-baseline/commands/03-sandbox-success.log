@@ -1,0 +1,21 @@
+=== Sandbox 成功ログ（2026-06-23）===
+実行環境: nix develop + .env.local (AWS_PROFILE=aws-poc-sandbox)
+コマンド: npm run sandbox
+
+Identifier:   adachi
+Stack:        amplify-amplifyvitereacttemplate-adachi-sandbox-a14ca47146
+Region:       ap-northeast-1
+
+2:00:54 AM ✔ Backend synthesized in 3.75 seconds
+2:00:58 AM ✔ Type checks completed in 3.76 seconds
+2:01:03 AM ✔ Built and published assets
+2:05:34 AM ✔ Deployment completed in 271.019 seconds
+2:05:34 AM AppSync API endpoint = https://nibwniwxsndy3giyjpyjxdg6nm.appsync-api.ap-northeast-1.amazonaws.com/graphql
+2:05:38 AM File written: amplify_outputs.json
+
+custom.blocks_api_url（マスク版は snapshots/amplify_outputs.masked.json）:
+  https://mkg0bxtrk7.execute-api.ap-northeast-1.amazonaws.com/prod/aws-blocks/api
+
+注意:
+- Sandbox は watch モードのためターミナル A は起動したままにする
+- amplify_outputs.json 本体は gitignore（コミットしない）

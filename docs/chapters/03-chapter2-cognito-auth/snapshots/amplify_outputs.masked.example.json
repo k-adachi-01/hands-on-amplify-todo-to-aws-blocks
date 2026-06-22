@@ -1,0 +1,23 @@
+{
+    "version": "1.4",
+    "custom": {
+        "blocks_api_url": "https://example.execute-api.us-east-1.amazonaws.com/aws-blocks/api"
+    },
+    "auth": {
+        "user_pool_id": "us-east-1_EXAMPLE",
+        "user_pool_client_id": "EXAMPLECLIENTID",
+        "identity_pool_id": "us-east-1:example-identity-pool",
+        "password_policy": {
+            "min_length": 8
+        },
+        "username_attributes": ["email"],
+        "standard_required_attributes": ["email"],
+        "user_verification_types": ["email"]
+    },
+    "data": {
+        "url": "https://example.appsync-api.us-east-1.amazonaws.com/graphql",
+        "aws_region": "us-east-1",
+        "default_authorization_type": "API_KEY",
+        "authorization_types": ["API_KEY"]
+    }
+}

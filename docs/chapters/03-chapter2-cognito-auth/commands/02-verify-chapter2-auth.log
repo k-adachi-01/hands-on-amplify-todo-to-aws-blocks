@@ -1,0 +1,19 @@
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> amplify-vite-react-template@0.0.0 verify:chapter2
+> bash scripts/verify-chapter2-auth.sh
+
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+Blocks API: https://mkg0bxtrk7.execute-api.ap-northeast-1.amazonaws.com/prod/aws-blocks/api
+User Pool: ap-northeast-1_gqAvBoWxN
+
+=== User A: create + list ===
+{"jsonrpc":"2.0","result":{"userId":"a7041a38-5001-7005-c423-02aeffd98184","todoId":"mqphgar2-eyu8ix","title":"A のタスク","completed":false,"priority":2,"version":1,"createdAt":1782148919150},"id":1}
+{"jsonrpc":"2.0","result":[{"completed":false,"version":1,"userId":"a7041a38-5001-7005-c423-02aeffd98184","createdAt":1782148919150,"priority":2,"title":"A のタスク","todoId":"mqphgar2-eyu8ix"}],"id":1}
+
+=== User B: create + list ===
+{"jsonrpc":"2.0","result":{"userId":"07541ab8-90a1-70b3-12d7-1ae645a40497","todoId":"mqphgcdk-l5neot","title":"B のタスク","completed":false,"priority":1,"version":1,"createdAt":1782148921256},"id":1}
+{"jsonrpc":"2.0","result":[{"completed":false,"version":1,"userId":"07541ab8-90a1-70b3-12d7-1ae645a40497","createdAt":1782148921256,"priority":1,"title":"B のタスク","todoId":"mqphgcdk-l5neot"}],"id":1}
+
+=== Isolation check ===
+OK — userId partition isolation verified
