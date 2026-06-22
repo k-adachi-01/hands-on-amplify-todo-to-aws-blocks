@@ -107,7 +107,8 @@ npm run dev
 - [x] Authenticator（Sign In / Create Account）表示
 - [x] ユーザー A/B で Todo 分離（`npm run verify:chapter2` — 第2章）
 - [x] UI スクショ（`02-user-a-todos.png` / `03-user-b-todos.png`）
-- [ ] Amplify 純粋 Todo UI（`dev:amplify` + tag `phase-0` 時点のコード）— 記事用 Before は snapshots 参照
+- [x] 記事初稿完成（`docs/ARTICLE-DRAFT.md`）
+- [ ] Amplify 純粋 Todo UI スクショ — snapshots 参照で代替（`phase-0-amplify-baseline` tag）
 
 ## 手順 0-7: 片付け（任意）
 

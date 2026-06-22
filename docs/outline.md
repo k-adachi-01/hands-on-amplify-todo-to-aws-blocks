@@ -34,7 +34,9 @@
 
 **公開リポジトリ:** https://github.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks
 
-記事初稿: [ARTICLE-DRAFT.md](ARTICLE-DRAFT.md)
+記事初稿: [ARTICLE-DRAFT.md](ARTICLE-DRAFT.md)  
+Zenn 掲載用: [publish/ARTICLE-zenn.md](publish/ARTICLE-zenn.md)  
+Sandbox 運用: [SANDBOX-OPERATIONS.md](SANDBOX-OPERATIONS.md)
 
 ## 公開時の注意
 

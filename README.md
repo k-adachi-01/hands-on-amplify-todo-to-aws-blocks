@@ -1,14 +1,23 @@
 # Amplify Todo → AWS Blocks ハンズオン
 
+**このリポジトリは技術ブログ「Amplify の Todo チュートリアルを AWS Blocks で書き直す」の再現用です。**
+
 [aws-samples/amplify-vite-react-template](https://github.com/aws-samples/amplify-vite-react-template) を起点に、同一リポジトリ内で AWS Blocks へ段階的に書き換えるハンズオン用リポジトリです。
+
+| リンク | 内容 |
+| --- | --- |
+| **記事全文** | [docs/ARTICLE-DRAFT.md](docs/ARTICLE-DRAFT.md) |
+| **Zenn 用** | [docs/publish/ARTICLE-zenn.md](docs/publish/ARTICLE-zenn.md) |
+| **章ごとの手順** | [docs/chapters/](docs/chapters/) |
+| **Sandbox 運用** | [docs/SANDBOX-OPERATIONS.md](docs/SANDBOX-OPERATIONS.md) |
 
 **公開 URL:** https://github.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks
 
 ## 前提
 
-- [Nix](https://nixos.org/download/)（flakes 対応）
+- [Nix](https://nixos.org/download/)（flakes 対応）— 無い場合は Node.js 20+ / npm 10+
 - AWS アカウント（Phase 0 の Amplify Sandbox 以降）
-- AWS CLI + SSO プロファイル（Sandbox デプロイ用）
+- AWS CLI + SSO プロファイル
 
 ## クイックスタート
 
@@ -20,52 +29,25 @@ npm install
 
 aws sso login --profile aws-poc-sandbox   # プロファイル名は環境に合わせる
 cp .env.local.example .env.local
+exit && nix develop   # .env.local を shellHook で読み込む
 
-# ターミナル A
+# ターミナル A — Sandbox（watch のまま）
 npm run sandbox
 
-# ターミナル B
+# ターミナル B — UI + Blocks dev
 npm run dev    # http://localhost:3000
 ```
 
-## 環境の入り方（Nix）
-
-ホストに Node.js / npm を直接入れず、dev shell 内だけで作業します。
-
-```bash
-nix develop
-node -v    # v22.x
-```
-
-`npm_config_cache` はリポジトリ内 `.npm-cache/` に向きます。`.env.local` は `nix develop` 時に自動読み込みされます。
-
 ## 検証スクリプト
 
-| コマンド | 内容 |
-| --- | --- |
-| `npm run verify:chapter1` | 認証なし CRUD（API-only :3002） |
-| `npm run verify:chapter2` | Cognito JWT + userId 分離 |
-| `npm run verify:chapter3` | toggle / sort / delete |
-| `npm run capture:screenshots` | 第2章 UI スクショ（Playwright） |
+| コマンド | 前提 | 内容 |
+| --- | --- | --- |
+| `npm run verify:chapter1` | `npm run blocks:api` で :3002 起動時 | 認証なし CRUD |
+| `npm run verify:chapter2` | Sandbox + `amplify_outputs.json` + テストユーザー | Cognito 分離 |
+| `npm run verify:chapter3` | 同上 | toggle / sort / delete |
+| `npm run capture:screenshots` | `npm run dev` @ :3000、Playwright 初回は `npx playwright install chromium` | 第2章 UI スクショ |
 
-## ドキュメント
-
-| パス | 内容 |
-| --- | --- |
-| [docs/outline.md](docs/outline.md) | 記事構成（実行版） |
-| [docs/ARTICLE-DRAFT.md](docs/ARTICLE-DRAFT.md) | 記事初稿 |
-| [docs/EXECUTION-LOG-2026-06-23.md](docs/EXECUTION-LOG-2026-06-23.md) | 実行ログ |
-| [docs/chapters/](docs/chapters/) | 章ごとの手順・ログ・snapshots |
-
-## 進め方（概要）
-
-1. **Phase 0** — Amplify Sandbox + Blocks dev（ハイブリッド）
-2. **Phase 1** — `npx @aws-blocks/create-blocks-app .`
-3. **第1章** — 最小 Todo CRUD
-4. **第2章** — Cognito + ユーザー分離
-5. **第3章** — Realtime / ソート / 更新削除
-
-各フェーズの詳細は `docs/chapters/` を参照。マイルストーンは `git tag -l 'phase-*' 'chapter-*'`。
+テストユーザー作成: `bash scripts/ensure-chapter2-users.sh`（パスワード既定 `TestPass1!`）
 
 ## ハイブリッド dev 構成
 
@@ -75,6 +57,10 @@ node -v    # v22.x
 | Blocks RPC（ブラウザ） | Sandbox Lambda（`custom.blocks_api_url`） |
 | Vite UI | ローカル dev server |
 
+## Git タグ
+
+`git tag -l 'phase-*' 'chapter-*'` — 各マイルストーンのコードに `git checkout <tag>` で戻れます。
+
 ## ライセンス
 
-アプリ本体は起点テンプレートに準じ MIT-0。ハンズオン資料（`docs/`）は本リポジトリ内で公開。
+MIT No Attribution（起点テンプレートに準拠）。詳細は [LICENSE](LICENSE)。
