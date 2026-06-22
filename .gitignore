@@ -4,6 +4,7 @@ dist/
 dist-ssr/
 .bb-data/
 .blocks-sandbox/
+.blocks/
 .npm-cache/
 
 # Amplify / AWS（秘密情報を含むためコミットしない）
