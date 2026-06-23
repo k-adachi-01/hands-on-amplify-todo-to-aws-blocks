@@ -14,16 +14,66 @@
 
 ## 前提
 
-- [Nix](https://nixos.org/download/)（推奨）— 無い場合は Node.js **20.20+** / npm 10.8+
+- **ローカル PC**（Mac / Linux / WSL）— CloudShell 等は UI 確認が難しいため非推奨
+- [Nix](https://nixos.org/download/)（推奨）— 無い場合は Node.js **20.20+** / npm 10.8+ をホストに用意
 - **AWS CLI 2.32.0+** と `aws login`（[手順](docs/ARTICLE-DRAFT.md#aws-へのログインaws-login)）
 - AWS アカウント（Phase 0 の Amplify Sandbox 以降）
+
+## 環境の準備
+
+### Nix のインストール（未導入の場合）
+
+`nix --version` が通ればスキップ可。詳細は [記事の環境準備](docs/ARTICLE-DRAFT.md#環境の準備ローカル実行) を参照。
+
+```bash
+# 推奨: Determinate Installer（flakes 有効）
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+
+# 代替: 公式インストーラ + flakes 有効化
+# sh <(curl -L https://nixos.org/nix/install) --yes
+# mkdir -p ~/.config/nix
+# echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf
+```
+
+インストール後は**ターミナルを開き直し**、`nix --version` で確認してください。
+
+### Nix あり（推奨）
+
+```bash
+nix develop          # Node v22 に固定。初回は数分
+npm install
+```
+
+### Nix なし（ローカル）
+
+`nix: command not found` と出たら Nix は不要です。
+
+```bash
+node -v              # v20.20.0 以上（v22.x 推奨）
+npm -v               # 10.8.0 以上
+npm install
+```
+
+バージョンが足りない場合は [Node.js 公式](https://nodejs.org/) または [nvm](https://github.com/nvm-sh/nvm) で 22 を入れてください。以降、記事に `nix develop` とある箇所は**省略**して同じコマンドを実行します。
+
+`npm install` 後の vulnerability 警告は Amplify / CDK の間接依存によるもので、**`npm audit fix` は実行しないでください**。
+
+名前付きプロファイル（`AWS_PROFILE`）を使う場合は、各ターミナルで:
+
+```bash
+cp .env.local.example .env.local   # 未作成なら。AWS_PROFILE のコメントを外す
+set -a && source .env.local && set +a
+```
 
 ## クイックスタート
 
 ```bash
 git clone https://github.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks.git
 cd hands-on-amplify-todo-to-aws-blocks
-nix develop && npm install
+
+# 環境準備（どちらか一方）
+nix develop && npm install    # Nix あり
+# npm install                 # Nix なし（上の「Nix なし」を先に確認）
 
 aws login
 aws sts get-caller-identity   # 通ることを確認
@@ -35,7 +85,7 @@ npm run sandbox
 npm run dev    # http://localhost:3000
 ```
 
-名前付きプロファイルを使う場合のみ `cp .env.local.example .env.local` で `AWS_PROFILE` を設定。
+デフォルトプロファイルで `aws login` しただけなら `.env.local` は不要です。
 
 ## 検証スクリプト
 
