@@ -11,10 +11,10 @@ index d192a65..9691f25 100644
  
  # Amplify / AWS（秘密情報を含むためコミットしない）
 diff --git a/aws-blocks/index.ts b/aws-blocks/index.ts
-index b4ef20c..f0a12c5 100644
+index b4ef20c..0e0cbf8 100644
 --- a/aws-blocks/index.ts
 +++ b/aws-blocks/index.ts
-@@ -1,29 +1,54 @@
+@@ -1,29 +1,46 @@
  import { ApiNamespace, Scope } from '@aws-blocks/blocks';
  import { DistributedTable } from '@aws-blocks/bb-distributed-table';
  import { z } from 'zod';
@@ -44,14 +44,6 @@ index b4ef20c..f0a12c5 100644
  
 -export const api = new ApiNamespace(scope, 'api', (_context) => ({
 -    async createTodo(content: string) {
-+async function collectAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
-+    const items: T[] = [];
-+    for await (const item of iterable) {
-+        items.push(item);
-+    }
-+    return items;
-+}
-+
 +export const api = new ApiNamespace(scope, 'api', (context) => ({
 +    async createTodo(title: string) {
 +        const user = await auth.requireAuth(context);
@@ -70,7 +62,7 @@ index b4ef20c..f0a12c5 100644
      async listTodos() {
 -        return await Array.fromAsync(todos.scan());
 +        const user = await auth.requireAuth(context);
-+        return await collectAsync(
++        return await Array.fromAsync(
 +            todos.query({ where: { userId: { equals: user.sub } } }),
 +        );
      },
