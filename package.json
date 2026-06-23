@@ -17,6 +17,7 @@
     "verify:chapter2": "bash scripts/verify-chapter2-auth.sh",
     "verify:chapter3": "bash scripts/verify-chapter3-advanced.sh",
     "capture:screenshots": "npx tsx scripts/capture-chapter2-screenshots.ts",
+    "capture:screenshots:mock": "npx tsx scripts/render-chapter2-screenshot-mock.ts",
     "blocks:generate-client": "cross-env NODE_OPTIONS=\"--conditions=aws-runtime\" tsx aws-blocks/scripts/generate-client.ts"
   },
   "dependencies": {

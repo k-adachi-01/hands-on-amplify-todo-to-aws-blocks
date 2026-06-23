@@ -42,14 +42,6 @@ const realtime = new Realtime(scope, 'live', {
     },
 });
 
-async function collectAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
-    const items: T[] = [];
-    for await (const item of iterable) {
-        items.push(item);
-    }
-    return items;
-}
-
 export const api = new ApiNamespace(scope, 'api', (context) => ({
     async subscribeTodos() {
         const user = await auth.requireAuth(context);
@@ -77,11 +69,11 @@ export const api = new ApiNamespace(scope, 'api', (context) => ({
         const user = await auth.requireAuth(context);
         if (sortBy) {
             const index = sortBy === 'priority' ? 'byPriority' : 'byTitle';
-            return await collectAsync(
+            return await Array.fromAsync(
                 todos.query({ index, where: { userId: { equals: user.sub } } }),
             );
         }
-        return await collectAsync(
+        return await Array.fromAsync(
             todos.query({ where: { userId: { equals: user.sub } } }),
         );
     },

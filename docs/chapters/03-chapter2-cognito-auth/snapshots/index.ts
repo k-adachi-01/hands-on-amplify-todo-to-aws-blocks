@@ -23,14 +23,6 @@ const todos = new DistributedTable(scope, 'todos', {
     key: { partitionKey: 'userId', sortKey: 'todoId' },
 });
 
-async function collectAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
-    const items: T[] = [];
-    for await (const item of iterable) {
-        items.push(item);
-    }
-    return items;
-}
-
 export const api = new ApiNamespace(scope, 'api', (context) => ({
     async createTodo(title: string) {
         const user = await auth.requireAuth(context);
@@ -47,7 +39,7 @@ export const api = new ApiNamespace(scope, 'api', (context) => ({
 
     async listTodos() {
         const user = await auth.requireAuth(context);
-        return await collectAsync(
+        return await Array.fromAsync(
             todos.query({ where: { userId: { equals: user.sub } } }),
         );
     },

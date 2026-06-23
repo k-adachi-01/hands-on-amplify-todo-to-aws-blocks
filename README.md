@@ -10,7 +10,7 @@
 
 **公開 URL:** https://github.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks
 
-> **重要:** clone 直後の `main` は完成形です。ハンズオンは [`docs/ARTICLE-DRAFT.md`](docs/ARTICLE-DRAFT.md) のとおり **章ごとに `git checkout <tag>`** してから編集してください。
+> **重要:** clone 直後の `main` は完成形です。ハンズオンは [`docs/ARTICLE-DRAFT.md`](docs/ARTICLE-DRAFT.md) のとおり **章ごとに `git switch -c work/chapterN <tag>`** してから編集してください。
 
 ## 前提
 
@@ -21,7 +21,7 @@
 ## クイックスタート
 
 ```bash
-git clone git@github.com:k-adachi-01/hands-on-amplify-todo-to-aws-blocks.git
+git clone https://github.com/k-adachi-01/hands-on-amplify-todo-to-aws-blocks.git
 cd hands-on-amplify-todo-to-aws-blocks
 nix develop && npm install
 

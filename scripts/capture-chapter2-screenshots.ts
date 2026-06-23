@@ -1,5 +1,6 @@
 /**
- * Capture chapter-2 UI screenshots (Authenticator sign-in → Todo list).
+ * Capture chapter-2 UI screenshots (Authenticator sign-in → simple Todo list).
+ * Expects chapter-2 code (input + Add, no Sort/toggle/delete) on localhost:3000.
  *
  * Run: npx tsx scripts/capture-chapter2-screenshots.ts
  */
@@ -39,20 +40,42 @@ async function signIn(page: import('playwright').Page, email: string) {
     });
 }
 
+async function addTodo(page: import('playwright').Page, label: string) {
+    const input = page.getByPlaceholder('New todo');
+    await input.fill(label);
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await page.getByText(label).waitFor({ timeout: 15_000 });
+}
+
+async function signOut(page: import('playwright').Page) {
+    const signOut = page.getByRole('button', { name: /sign out/i });
+    if (await signOut.isVisible().catch(() => false)) {
+        await signOut.click();
+        await page.locator('input[name="username"]').waitFor({ timeout: 15_000 });
+    }
+}
+
 async function main() {
     const browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext({
+        viewport: { width: 1280, height: 800 },
+    });
+    const page = await context.newPage();
+
+    await page.goto('http://localhost:3000/', { waitUntil: 'networkidle' });
+    await page.screenshot({
+        path: resolve(outDir, '01-authenticator-signin.png'),
+        fullPage: true,
+    });
+    console.log(`Saved ${resolve(outDir, '01-authenticator-signin.png')}`);
 
     for (const user of USERS) {
-        const context = await browser.newContext({
-            viewport: { width: 1280, height: 800 },
-        });
-        const page = await context.newPage();
         await signIn(page, user.email);
-        await page.getByText(user.todoLabel).waitFor({ timeout: 15_000 });
+        await addTodo(page, user.todoLabel);
         const path = resolve(outDir, user.file);
         await page.screenshot({ path, fullPage: true });
         console.log(`Saved ${path}`);
-        await context.close();
+        await signOut(page);
     }
 
     await browser.close();

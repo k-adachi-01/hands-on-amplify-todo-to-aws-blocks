@@ -4,8 +4,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 if [[ -f .env.local ]]; then
-  # shellcheck disable=SC1091
-  source .env.local
+    set -a
+    # shellcheck disable=SC1091
+    source .env.local
+    set +a
 fi
 
 PROFILE_ARGS=()
