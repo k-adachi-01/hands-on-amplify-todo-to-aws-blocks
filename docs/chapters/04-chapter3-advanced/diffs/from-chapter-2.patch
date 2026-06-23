@@ -1,5 +1,5 @@
 diff --git a/aws-blocks/index.ts b/aws-blocks/index.ts
-index 0e0cbf8..67ac561 100644
+index 0e0cbf8..d0a566d 100644
 --- a/aws-blocks/index.ts
 +++ b/aws-blocks/index.ts
 @@ -1,5 +1,6 @@
@@ -9,7 +9,7 @@ index 0e0cbf8..67ac561 100644
  import { z } from 'zod';
  import { CognitoVerifier } from './cognito-verifier.js';
  
-@@ -15,32 +16,92 @@ const todoSchema = z.object({
+@@ -15,32 +16,84 @@ const todoSchema = z.object({
      userId: z.string(),
      todoId: z.string(),
      title: z.string(),
@@ -39,14 +39,6 @@ index 0e0cbf8..67ac561 100644
 +    },
  });
  
-+async function collectAsync<T>(iterable: AsyncIterable<T>): Promise<T[]> {
-+    const items: T[] = [];
-+    for await (const item of iterable) {
-+        items.push(item);
-+    }
-+    return items;
-+}
-+
  export const api = new ApiNamespace(scope, 'api', (context) => ({
 -    async createTodo(title: string) {
 +    async subscribeTodos() {
@@ -74,14 +66,13 @@ index 0e0cbf8..67ac561 100644
 -    async listTodos() {
 +    async listTodos(sortBy?: 'priority' | 'title') {
          const user = await auth.requireAuth(context);
--        return await Array.fromAsync(
 +        if (sortBy) {
 +            const index = sortBy === 'priority' ? 'byPriority' : 'byTitle';
-+            return await collectAsync(
++            return await Array.fromAsync(
 +                todos.query({ index, where: { userId: { equals: user.sub } } }),
 +            );
 +        }
-+        return await collectAsync(
+         return await Array.fromAsync(
              todos.query({ where: { userId: { equals: user.sub } } }),
          );
      },
