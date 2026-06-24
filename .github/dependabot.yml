@@ -4,10 +4,14 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "@aws-blocks/*"
   - package-ecosystem: npm
     directory: "/aws-blocks"
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "@aws-blocks/*"
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
