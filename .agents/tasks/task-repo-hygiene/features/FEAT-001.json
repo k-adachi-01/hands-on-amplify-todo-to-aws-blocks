@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Pin @aws-blocks/* versions in both package.json files and rename root package",
+  "status": "completed",
+  "steps": [
+    "In package.json (root): change \"name\" from \"amplify-vite-react-template\" to \"hands-on-amplify-todo-to-aws-blocks\"",
+    "In package.json (root): change \"@aws-blocks/blocks\": \"*\" to \"@aws-blocks/blocks\": \"0.1.4\"",
+    "In package.json (root): change \"@aws-blocks/bb-realtime\": \"*\" to \"@aws-blocks/bb-realtime\": \"0.1.1\"",
+    "In aws-blocks/package.json: change \"@aws-blocks/blocks\": \"*\" to \"@aws-blocks/blocks\": \"0.1.4\"",
+    "In aws-blocks/package.json: change \"@aws-blocks/bb-distributed-table\": \"*\" to \"@aws-blocks/bb-distributed-table\": \"0.1.2\"",
+    "In aws-blocks/package.json: change \"@aws-blocks/bb-realtime\": \"*\" to \"@aws-blocks/bb-realtime\": \"0.1.1\""
+  ],
+  "acceptance_criteria": [
+    "Root package.json name field is \"hands-on-amplify-todo-to-aws-blocks\"",
+    "No \"*\" version strings remain for @aws-blocks/* packages in either package.json",
+    "@aws-blocks/blocks is pinned to 0.1.4 in both files",
+    "@aws-blocks/bb-distributed-table is pinned to 0.1.2 in aws-blocks/package.json",
+    "@aws-blocks/bb-realtime is pinned to 0.1.1 in both files"
+  ],
+  "verification": [
+    "grep -c '\"*\"' package.json aws-blocks/package.json should return 0 matches",
+    "grep '\"name\"' package.json shows hands-on-amplify-todo-to-aws-blocks"
+  ],
+  "blocked_reason": null,
+  "findings": "All version pins applied successfully. No build/test run needed as this is a metadata-only change to package.json files (version pinning and name change). The @aws-blocks packages are private/tutorial packages not available in public registries."
+}

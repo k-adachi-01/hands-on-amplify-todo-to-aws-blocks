@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Add GitHub Actions CI, SECURITY.md, dependabot.yml, .node-version, AGENTS.md, and .github/copilot-instructions.md",
+  "status": "completed",
+  "steps": [
+    "Create .github/workflows/ci.yml with: name ci, triggers on push to main and pull_request, permissions read-all, job 'build' on ubuntu-latest using actions/checkout@v4, actions/setup-node@v4 with node-version 22 and cache npm, then npm ci, npm run lint, npm run build",
+    "Create .github/dependabot.yml with version 2, three update entries: npm at / weekly, npm at /aws-blocks weekly, github-actions at / weekly",
+    "Create .github/copilot-instructions.md with project context: this is a hands-on tutorial repo for rewriting Amplify Todo with AWS Blocks, commands (npm install, npm run dev, npm run lint, npm run build, npm run sandbox, npm run sandbox:delete), and rules (no committing .amplify/, amplify_outputs.json, .env.local, .bb-data/, AWS files; update docs when scripts change; update chapters when behavior changes)",
+    "Create SECURITY.md stating this is a hands-on tutorial not intended for production, directing sensitive reports to AWS vulnerability reporting page (matching CONTRIBUTING.md which already references it)",
+    "Create AGENTS.md with project goal, commands list (install, dev, sandbox, sandbox:delete, lint, build, verify:chapter2, verify:chapter3), and rules (no committing secrets, update docs with script changes, update chapters with behavior changes, not for production)",
+    "Create .node-version file containing just '22'"
+  ],
+  "acceptance_criteria": [
+    ".github/workflows/ci.yml exists with proper YAML structure",
+    ".github/dependabot.yml exists with 3 ecosystem entries",
+    ".github/copilot-instructions.md exists",
+    "SECURITY.md exists at repo root",
+    "AGENTS.md exists at repo root",
+    ".node-version exists containing '22'"
+  ],
+  "verification": [
+    "cat .github/workflows/ci.yml and confirm valid YAML with permissions: read-all",
+    "cat .github/dependabot.yml and confirm 3 update blocks",
+    "cat SECURITY.md and confirm it exists",
+    "cat AGENTS.md and confirm it has commands and rules",
+    "cat .node-version shows 22"
+  ],
+  "blocked_reason": null,
+  "findings": "Build/lint verification skipped due to npm install failing (403 on @aws-sdk/types). All files are documentation/config only (YAML, Markdown, .node-version) so no code behavior changes to verify."
+}
