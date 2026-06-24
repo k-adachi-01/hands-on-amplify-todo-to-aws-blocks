@@ -95,6 +95,40 @@ npm run dev    # http://localhost:3000
 | `npm run verify:chapter3` | 同上 |
 | `npm run capture:screenshots` | `npm run dev` @ :3000 |
 
+## このハンズオンで作成される AWS リソース
+
+Amplify Sandbox により、主に以下のリソースが作成されます。
+
+- Amazon Cognito User Pool
+- Amazon DynamoDB table
+- AWS Lambda function
+- Amazon API Gateway
+- IAM roles
+- CloudFormation stack
+
+## 想定コスト
+
+このハンズオンは短時間の実施を想定しており、通常は大きな課金は発生しません。
+ただし、環境・利用量・AWS の料金体系により異なります。
+
+終了後は必ず `npm run sandbox:delete` を実行してください。
+
+## 後片付け（削除確認）
+
+ハンズオン後に続けて検証しない場合は、必ず次を実行してください。
+
+```bash
+npm run sandbox:delete
+```
+
+削除後、AWS コンソールで以下が残っていないことを確認してください。
+
+- CloudFormation stack が DELETE_COMPLETE になっている
+- DynamoDB table が残っていない
+- Lambda function が残っていない
+- API Gateway API が残っていない
+- Cognito User Pool が残っていない
+
 ## ライセンス
 
 MIT No Attribution — [LICENSE](LICENSE)
