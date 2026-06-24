@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "chore",
   "description": "Pin @aws-blocks/* versions in both package.json files and rename root package",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In package.json (root): change \"name\" from \"amplify-vite-react-template\" to \"hands-on-amplify-todo-to-aws-blocks\"",
     "In package.json (root): change \"@aws-blocks/blocks\": \"*\" to \"@aws-blocks/blocks\": \"0.1.4\"",
@@ -23,5 +23,5 @@
     "grep '\"name\"' package.json shows hands-on-amplify-todo-to-aws-blocks"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All version pins applied successfully. No build/test run needed as this is a metadata-only change to package.json files (version pinning and name change). The @aws-blocks packages are private/tutorial packages not available in public registries."
 }
